@@ -1,5 +1,5 @@
 {
-    "name": "Uskur/Attachments",
+    "name": "uskur/attachments",
     "description": "Attachments plugin for CakePHP",
     "type": "cakephp-plugin",
     "require": {
