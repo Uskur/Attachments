@@ -55,7 +55,7 @@ class AttachmentsBehavior extends Behavior
      */
     public function initialize(array $config)
     {
-        $this->Attachments = TableRegistry::get('Attachments');
+        $this->Attachments = TableRegistry::get('Uskur/Attachments.Attachments');
 
         // Dynamically attach the hasMany relationship
         $this->_table->hasMany('Attachments', [

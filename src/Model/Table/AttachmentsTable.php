@@ -80,9 +80,9 @@ class AttachmentsTable extends Table
      * @param string $upload Upload
      * @return entity
      */
-    public function addUpload($entity, $upload, $allowed_types)
+    public function addUpload($entity, $upload, $allowed_types = [])
     {
-        if(!in_array($upload['type'], $allowed_types))
+        if(!empty($allowed_types) && !in_array($upload['type'], $allowed_types))
             return false;
     	if (!file_exists($upload['tmp_name'])) {
     		throw new \Exception("File {$upload['tmp_name']} does not exist.");
