@@ -26,8 +26,15 @@ class AttachmentsController extends AppController
         	
         	$Model = TableRegistry::get($model);
         	$entity = $Model->get($fk);
-        	
-        	$attachment = $this->Attachments->addUpload($entity,$this->request->data['file']);
+        	if(isset($this->request->data['files'])) {
+        	    foreach($this->request->data['files'] as $file) {
+        	        $attachment = $this->Attachments->addUpload($entity,$file);
+        	    }
+        	}
+        	else{
+        	   $file = $this->request->data['file'];
+        	   $attachment = $this->Attachments->addUpload($entity,$file);
+        	}
         }
         $this->set(compact('attachment'));
         $this->set('_serialize', ['attachment']);
@@ -117,5 +124,15 @@ class AttachmentsController extends AppController
     	$this->response->type($attachment->filetype);
     	$this->response->file($attachment->path,['download'=>false,'name'=>$attachment->filename]);
     	return $this->response;
+    }
+
+    public function download($id, $name = null){
+        $attachment = $this->Attachments->get($id);
+        if(!file_exists($attachment->path)){
+            throw new \Exception("File {$attachment->path} cannot be read.");
+        }
+        $this->response->type($attachment->filetype);
+        $this->response->file($attachment->path,['download'=>true,'name'=>$attachment->filename]);
+        return $this->response;
     }
 }
