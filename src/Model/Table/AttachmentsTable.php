@@ -69,7 +69,8 @@ class AttachmentsTable extends Table
      */
     public function buildRules(RulesChecker $rules)
     {
-        $rules->add($rules->isUnique(['model', 'foreign_key']));
+        //this is to endorce single file per attachment, must be made dynamic!
+        //$rules->add($rules->isUnique(['model', 'foreign_key']));
         return $rules;
     }
     
@@ -83,7 +84,7 @@ class AttachmentsTable extends Table
     public function addUpload($entity, $upload, $allowed_types = [])
     {
         if(!empty($allowed_types) && !in_array($upload['type'], $allowed_types))
-            return false;
+            throw new \Exception("File type not allowed.");
     	if (!file_exists($upload['tmp_name'])) {
     		throw new \Exception("File {$upload['tmp_name']} does not exist.");
     	}
@@ -101,13 +102,8 @@ class AttachmentsTable extends Table
     			'md5' => $file->md5(true),
     			'tmpPath' => $upload['tmp_name']
     	]);
-    	
     	$save = $this->save($attachment);
         return ($save) ? true : false;
-    	/*if ($save) {
-    		return $attachment;
-    	}
-    	return $save;*/
     }
     
     /**
