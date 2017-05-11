@@ -33,6 +33,11 @@ class AttachmentsTable extends Table
         $this->primaryKey('id');
 
         $this->addBehavior('Timestamp');
+        $this->addBehavior('ADmad/Sequence.Sequence', [
+            'order' => 'sequence',
+            'scope' => ['model','foreign_key'],
+            'start' => 1,
+        ]);
     }
 
     /**

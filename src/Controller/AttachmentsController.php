@@ -135,4 +135,18 @@ class AttachmentsController extends AppController
         $this->response->file($attachment->path,['download'=>true,'name'=>$attachment->filename]);
         return $this->response;
     }
+    
+    public function updatePosition($id = null, $newPosition = null)
+    {
+        $attachment = $this->Attachments->get($id);
+        $attachment->sequence = $newPosition;
+        $this->Attachments->save($attachment);
+        $this->set('attachment',$attachment);
+        exit();
+    }
+    
+    public function reorder($fk){
+        $reorder = $this->Attachments->find('all',['fields'=>['id'],'conditions'=>['foreign_key'=>$fk]])->order(['filename ASC'])->toArray();
+        $this->Attachments->setOrder($reorder);
+    }
 }
