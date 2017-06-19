@@ -13,7 +13,7 @@ class AddSequenceToAttachments extends AbstractMigration
     public function change()
     {
         $table = $this->table('attachments');
-        $table->addColumn('details', 'integer', [
+        $table->addColumn('sequence', 'integer', [
             'default' => null,
             'limit' => 11,
             'null' => true,
