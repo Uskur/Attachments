@@ -5,6 +5,7 @@ use Cake\ORM\Entity;
 use Cake\Filesystem\File;
 use Cake\Filesystem\Folder;
 use Cake\Core\Configure;
+use Uskur\Attachments\Model\Entity\DetailsTrait;
 
 /**
  * Attachment Entity.
@@ -19,6 +20,7 @@ use Cake\Core\Configure;
  */
 class Attachment extends Entity
 {
+    use DetailsTrait;
 
     /**
      * Fields that can be mass assigned using newEntity() or patchEntity().
@@ -33,6 +35,8 @@ class Attachment extends Entity
         '*' => true,
         'id' => false,
     ];
+    
+    protected $_virtual = ['details_array'];
     
     protected function _getPath()
     {
