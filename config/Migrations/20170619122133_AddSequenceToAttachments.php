@@ -1,7 +1,7 @@
 <?php
 use Migrations\AbstractMigration;
 
-class AddDetailsToAttachments extends AbstractMigration
+class AddSequenceToAttachments extends AbstractMigration
 {
     /**
      * Change Method.
@@ -13,8 +13,9 @@ class AddDetailsToAttachments extends AbstractMigration
     public function change()
     {
         $table = $this->table('attachments');
-        $table->addColumn('details', 'text', [
+        $table->addColumn('details', 'integer', [
             'default' => null,
+            'limit' => 11,
             'null' => true,
         ]);
         $table->update();
