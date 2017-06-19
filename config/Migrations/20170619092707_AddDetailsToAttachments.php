@@ -15,7 +15,7 @@ class AddDetailsToAttachments extends AbstractMigration
         $table = $this->table('attachments');
         $table->addColumn('details', 'text', [
             'default' => null,
-            'null' => false,
+            'null' => true,
         ]);
         $table->update();
     }
