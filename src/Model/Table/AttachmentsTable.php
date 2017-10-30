@@ -111,6 +111,23 @@ class AttachmentsTable extends Table
         return ($save) ? true : false;
     }
     
+    public function addFile($entity, $filePath)
+    {
+    	$file = new File($filePath);
+    	$info = $file->info();
+    	$attachment = $this->newEntity([
+    			'model' => $entity->source(),
+    			'foreign_key' => $entity->id,
+    			'filename' => $info['basename'],
+    			'size' => $info['filesize'],
+    			'filetype' => $info['mime'],
+    			'md5' => $file->md5(true),
+    			'tmpPath' => $filePath
+    	]);
+    	$save = $this->save($attachment);
+    	return ($save) ? true : false;
+    }
+    
     /**
      * afterSave Event. If an attachment entity has its tmpPath value set, it will be moved
      * to the defined filepath
@@ -125,8 +142,15 @@ class AttachmentsTable extends Table
     {
     	if ($attachment->tmpPath) {
     		$path = $attachment->get('path');
-    		if (!move_uploaded_file($attachment->tmpPath, $path)) {
-    			throw new \Exception("Temporary file {$attachment->tmpPath} could not be moved to {$attachment->path}");
+    		if(is_uploaded_file($attachment->tmpPath)) {
+	    		if (!move_uploaded_file($attachment->tmpPath, $path)) {
+	    			throw new \Exception("Temporary file {$attachment->tmpPath} could not be moved to {$attachment->path}");
+	    		}
+    		}
+    		else {
+    			if(!copy($attachment->tmpPath, $path)) {
+    				throw new \Exception("File {$attachment->tmpPath} could not be copied to {$attachment->path}");
+    			}
     		}
     		$attachment->tmpPath = null;
     	}
