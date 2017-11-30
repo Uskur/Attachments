@@ -4,6 +4,7 @@ namespace Uskur\Attachments\Controller;
 use Uskur\Attachments\Controller\AppController;
 use \Eventviva\ImageResize;
 use Cake\ORM\TableRegistry;
+use Cake\Filesystem\File;
 /**
  * Attachments Controller
  *
@@ -92,10 +93,11 @@ class AttachmentsController extends AppController
     	$crop = isset($this->request->query['c'])?$this->request->query['c']:false;
     	$quality = isset($this->request->query['q'])?$this->request->query['q']:75;
     	$cacheFolder = CACHE.'image';
-    	if(!file_exists($cacheFolder)) mkdir($cacheFolder);
-    	
     	$cacheFile = $cacheFolder.DS.md5("{$id}w{$width}h{$height}c{$crop}q{$quality}");
+    	
     	if(!file_exists($cacheFile)){
+    	    if(!file_exists($cacheFolder)) mkdir($cacheFolder);
+    	    
     		$attachment = $this->Attachments->get($id);
     		//@todo show mimetype icon if not an image type
     		if(!file_exists($attachment->path)){
@@ -111,8 +113,16 @@ class AttachmentsController extends AppController
     	if(!file_exists($cacheFile)){
     		throw new \Exception("File {$cacheFile} cannot be read.");
     	}
+    	
+    	$file = new File($cacheFile);
     	$this->response->file($cacheFile);
     	$this->response->type('image/jpeg');
+    	$this->response->withExpires('+1 month');
+    	$this->response->withModified($file->lastChange());
+    	if ($this->response->checkNotModified($this->request)) {
+    	    return $this->response;
+    	}
+    	
     	return $this->response;
     }
     
