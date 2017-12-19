@@ -91,9 +91,10 @@ class AttachmentsController extends AppController
     	$width = isset($this->request->query['w'])?$this->request->query['w']:null;
     	$height = isset($this->request->query['h'])?$this->request->query['h']:null;
     	$crop = isset($this->request->query['c'])?$this->request->query['c']:false;
+    	$enlarge = isset($this->request->query['e'])?$this->request->query['e']:false;
     	$quality = isset($this->request->query['q'])?$this->request->query['q']:75;
     	$cacheFolder = CACHE.'image';
-    	$cacheFile = $cacheFolder.DS.md5("{$id}w{$width}h{$height}c{$crop}q{$quality}");
+    	$cacheFile = $cacheFolder.DS.md5("{$id}w{$width}h{$height}c{$crop}q{$quality}e{$quality}");
     	
     	if(!file_exists($cacheFile)){
     	    if(!file_exists($cacheFolder)) mkdir($cacheFolder);
@@ -105,6 +106,7 @@ class AttachmentsController extends AppController
     		}
     		$image = new ImageResize($attachment->path);
     		if($width && $height && $crop) $image->crop($width, $height);
+    		elseif($width && $height && $enlarge) $image->resizeToBestFit($width, $height, true);
     		elseif($width && $height) $image->resizeToBestFit($width, $height);
     		elseif($height) $image->resizeToHeight($height);
     		elseif($width) $image->resizeToWidth($width);
