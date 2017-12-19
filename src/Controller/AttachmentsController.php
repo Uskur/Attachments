@@ -116,7 +116,7 @@ class AttachmentsController extends AppController
     	}
     	
     	$file = new File($cacheFile);
-    	$this->response->file($cacheFile);
+    	$this->response->file($cacheFile,['download'=>false,'name'=>$attachment->filename]);
     	$this->response->type('image/jpeg');
     	$this->response->cache('-1 minute', '+1 month');
     	$this->response->expires('+1 month');
