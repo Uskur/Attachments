@@ -22,18 +22,18 @@ class AttachmentsController extends AppController
     {
         $attachment = $this->Attachments->newEntity();
         if ($this->request->is('post')) {
-        	if(is_null($fk)) $fk = $this->request->data['fk'];
-        	if(is_null($model)) $model = $this->request->data['model'];
+        	if(is_null($fk)) $fk = $this->request->getData('fk');
+        	if(is_null($model)) $model = $this->request->getData('model');
         	
         	$Model = TableRegistry::get($model);
         	$entity = $Model->get($fk);
-        	if(isset($this->request->data['files'])) {
-        	    foreach($this->request->data['files'] as $file) {
+        	if($this->request->getData('files')) {
+        	    foreach($this->request->getData('files') as $file) {
         	        $attachment = $this->Attachments->addUpload($entity,$file);
         	    }
         	}
         	else{
-        	   $file = $this->request->data['file'];
+        	    $file = $this->request->getData('file');
         	   $attachment = $this->Attachments->addUpload($entity,$file);
         	}
         }
@@ -55,7 +55,7 @@ class AttachmentsController extends AppController
             'contain' => []
         ]);
         if ($this->request->is(['patch', 'post', 'put'])) {
-            $attachment = $this->Attachments->patchEntity($attachment, $this->request->data);
+            $attachment = $this->Attachments->patchEntity($attachment, $this->request->getData());
             if ($this->Attachments->save($attachment)) {
                 $this->Flash->success(__('The attachment has been saved.'));
                 return $this->redirect(['action' => 'index']);
