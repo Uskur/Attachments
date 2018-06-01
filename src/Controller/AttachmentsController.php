@@ -109,18 +109,21 @@ class AttachmentsController extends AppController
     		elseif($width && $height) $image->resizeToBestFit($width, $height, $enlarge);
     		elseif($height) $image->resizeToHeight($height, $enlarge);
     		elseif($width) $image->resizeToWidth($width, $enlarge);
-    		$image->save($cacheFile,IMAGETYPE_JPEG,$quality);
+    		$type = IMAGETYPE_JPEG;
+    		//preserve PNG for transparency
+    		if($attachment->filetype == 'image/png') $type = IMAGETYPE_PNG;
+    		$image->save($cacheFile,$type,$quality);
     	}
     	if(!file_exists($cacheFile)){
     		throw new \Exception("File {$cacheFile} cannot be read.");
     	}
     	
     	$file = new File($cacheFile);
-    	$this->response->file($cacheFile,['download'=>false,'name'=>(isset($attachment)?$attachment->filename:null)]);
-    	$this->response->type('image/jpeg');
-    	$this->response->cache('-1 minute', '+1 month');
-    	$this->response->expires('+1 month');
-    	$this->response->modified($file->lastChange());
+    	$this->response->withFile($cacheFile,['download'=>false,'name'=>(isset($attachment)?$attachment->filename:null)]);
+    	$this->response->withType($file->mime());
+    	$this->response->withCache('-1 minute', '+1 month');
+    	$this->response->withExpires('+1 month');
+    	$this->response->withModified($file->lastChange());
     	if ($this->response->checkNotModified($this->request)) {
     	    return $this->response;
     	}
