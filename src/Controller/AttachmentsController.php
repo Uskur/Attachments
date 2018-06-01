@@ -88,11 +88,11 @@ class AttachmentsController extends AppController
     }
     
     public function image($id) {
-    	$width = isset($this->request->query['w'])?$this->request->query['w']:null;
-    	$height = isset($this->request->query['h'])?$this->request->query['h']:null;
-    	$crop = isset($this->request->query['c'])?$this->request->query['c']:false;
-    	$enlarge = isset($this->request->query['e'])?true:false;
-    	$quality = isset($this->request->query['q'])?$this->request->query['q']:75;
+    	$width = $this->request->getQuery('w');
+    	$height = $this->request->getQuery('h');
+    	$crop = $this->request->getQuery('c')?true:false;
+    	$enlarge = $this->request->getQuery('e')?true:false;
+    	$quality = $this->request->getQuery('q')?$this->request->getQuery('q'):75;
     	$cacheFolder = CACHE.'image';
     	$cacheFile = $cacheFolder.DS.md5("{$id}w{$width}h{$height}c{$crop}q{$quality}e{$quality}");
     	
@@ -117,13 +117,12 @@ class AttachmentsController extends AppController
     	if(!file_exists($cacheFile)){
     		throw new \Exception("File {$cacheFile} cannot be read.");
     	}
-    	
     	$file = new File($cacheFile);
-    	$this->response->withFile($cacheFile,['download'=>false,'name'=>(isset($attachment)?$attachment->filename:null)]);
-    	$this->response->withType($file->mime());
-    	$this->response->withCache('-1 minute', '+1 month');
-    	$this->response->withExpires('+1 month');
-    	$this->response->withModified($file->lastChange());
+    	$this->response->file($cacheFile,['download'=>false,'name'=>(isset($attachment)?$attachment->filename:null)]);
+    	$this->response->type($file->mime());
+    	$this->response->cache('-1 minute', '+1 month');
+    	$this->response->expires('+1 month');
+    	$this->response->modified($file->lastChange());
     	if ($this->response->checkNotModified($this->request)) {
     	    return $this->response;
     	}
