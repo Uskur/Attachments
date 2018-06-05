@@ -24,7 +24,7 @@ class AttachmentsController extends AppController
         if ($this->request->is('post')) {
         	if(is_null($fk)) $fk = $this->request->getData('fk');
         	if(is_null($model)) $model = $this->request->getData('model');
-        	
+        	$model = str_replace('-', '/', $model);
         	$Model = TableRegistry::get($model);
         	$entity = $Model->get($fk);
         	if($this->request->getData('files')) {
@@ -162,5 +162,13 @@ class AttachmentsController extends AppController
     public function reorder($fk){
         $reorder = $this->Attachments->find('all',['fields'=>['id'],'conditions'=>['foreign_key'=>$fk]])->order(['filename ASC'])->toArray();
         $this->Attachments->setOrder($reorder);
+    }
+    
+    public function list($model, $fk)
+    {
+        $model = str_replace('-', '/', $model);
+        $attachments = $this->Attachments->find('all',['conditions'=>['Attachments.model'=>$model,'Attachments.foreign_key'=>$fk]]);
+        $this->set('attachments',$attachments);
+        $this->set('_serialize', ['attachments']);
     }
 }
