@@ -4,6 +4,7 @@ namespace Uskur\Attachments\Model\Entity;
 use Cake\ORM\Entity;
 use Cake\Filesystem\File;
 use Cake\Filesystem\Folder;
+use Cake\I18n\Number;
 use Cake\Core\Configure;
 use Uskur\Attachments\Model\Entity\DetailsTrait;
 
@@ -36,7 +37,7 @@ class Attachment extends Entity
         'id' => false,
     ];
     
-    protected $_virtual = ['details_array'];
+    protected $_virtual = ['details_array','readable_size','readable_created'];
     
     protected function _getPath()
     {
@@ -47,5 +48,15 @@ class Attachment extends Entity
     	}
     	
     	return $targetDir.DS.$this->_properties['md5'];
+    }
+    
+    protected function _getReadableSize()
+    {
+        return Number::toReadableSize($this->_properties['size']);
+    }
+    
+    protected function _getReadableCreated()
+    {
+        return $this->_properties['created']->format('d/m/Y H:i:s');
     }
 }
