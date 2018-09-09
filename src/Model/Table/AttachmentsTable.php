@@ -125,7 +125,7 @@ class AttachmentsTable extends Table
     			'tmpPath' => $filePath
     	]);
     	$save = $this->save($attachment);
-    	return ($save) ? true : false;
+    	return ($save) ? $attachment : false;
     }
     
     /**
