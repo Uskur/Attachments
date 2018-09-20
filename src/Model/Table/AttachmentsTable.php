@@ -74,11 +74,11 @@ class AttachmentsTable extends Table
      */
     public function buildRules(RulesChecker $rules)
     {
-        //this is to endorce single file per attachment, must be made dynamic!
-        //$rules->add($rules->isUnique(['model', 'foreign_key']));
+            // this is to endorce single file per attachment, must be made dynamic!
+            // $rules->add($rules->isUnique(['model', 'foreign_key']));
         return $rules;
     }
-    
+
     /**
      * Save one Attachemnt
      *
@@ -86,44 +86,47 @@ class AttachmentsTable extends Table
      * @param string $upload Upload
      * @return entity
      */
-    public function addUpload($entity, $upload, $allowed_types = [])
+    public function addUpload($entity, $upload, $allowed_types = [], $details = [])
     {
-        if(!empty($allowed_types) && !in_array($upload['type'], $allowed_types))
+        if (! empty($allowed_types) && ! in_array($upload['type'], $allowed_types))
             throw new \Exception("File type not allowed.");
-    	if (!file_exists($upload['tmp_name'])) {
-    		throw new \Exception("File {$upload['tmp_name']} does not exist.");
-    	}
-    	if (!is_readable($upload['tmp_name'])) {
-    		throw new \Exception("File {$upload['tmp_name']} cannot be read.");
-    	}
-    	$file = new File($upload['tmp_name']);
-    	$info = $file->info();
-    	$attachment = $this->newEntity([
-    			'model' => $entity->source(),
-    			'foreign_key' => $entity->id,
-    			'filename' => $upload['name'],
-    			'size' => $info['filesize'],
-    			'filetype' => $info['mime'],
-    			'md5' => $file->md5(true),
-    			'tmpPath' => $upload['tmp_name']
-    	]);
-    	$save = $this->save($attachment);
+        if (! file_exists($upload['tmp_name'])) {
+            throw new \Exception("File {$upload['tmp_name']} does not exist.");
+        }
+        if (! is_readable($upload['tmp_name'])) {
+            throw new \Exception("File {$upload['tmp_name']} cannot be read.");
+        }
+        $file = new File($upload['tmp_name']);
+        $info = $file->info();
+        $attachment = $this->newEntity([
+            'model' => $entity->source(),
+            'foreign_key' => $entity->id,
+            'filename' => $upload['name'],
+            'size' => $info['filesize'],
+            'filetype' => $info['mime'],
+            'md5' => $file->md5(true),
+            'tmpPath' => $upload['tmp_name']
+        ]);
+        if($details) $attachment->details = json_encode($details);
+        $save = $this->save($attachment);
         return ($save) ? true : false;
     }
-    
-    public function addFile($entity, $filePath)
+
+    public function addFile($entity, $filePath, $details = [])
     {
-    	$file = new File($filePath);
-    	$info = $file->info();
-    	$attachment = $this->newEntity([
-    			'model' => $entity->source(),
-    			'foreign_key' => $entity->id,
-    			'filename' => $info['basename'],
-    			'size' => $info['filesize'],
-    			'filetype' => $info['mime'],
-    			'md5' => $file->md5(true),
-    			'tmpPath' => $filePath
+        $file = new File($filePath);
+        $info = $file->info();
+        $attachment = $this->newEntity([
+            'model' => $entity->source(),
+            'foreign_key' => $entity->id,
+            'filename' => $info['basename'],
+            'size' => $info['filesize'],
+            'filetype' => $info['mime'],
+            'md5' => $file->md5(true),
+            'tmpPath' => $filePath,
     	]);
+        
+        if($details) $attachment->details = json_encode($details);
     	$save = $this->save($attachment);
     	return ($save) ? true : false;
     }
