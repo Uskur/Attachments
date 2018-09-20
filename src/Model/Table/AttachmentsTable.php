@@ -128,7 +128,7 @@ class AttachmentsTable extends Table
         
         if($details) $attachment->details = json_encode($details);
     	$save = $this->save($attachment);
-    	return ($save) ? true : false;
+    	return ($save) ? $attachment : false;
     }
     
     /**
