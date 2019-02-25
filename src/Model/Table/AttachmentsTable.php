@@ -107,7 +107,19 @@ class AttachmentsTable extends Table
             'md5' => $file->md5(true),
             'tmpPath' => $upload['tmp_name']
         ]);
-        if($details) $attachment->details = json_encode($details);
+        if ($details)
+            $attachment->details = json_encode($details);
+        
+        // if the same thing return existing
+        $existing = $this->find('all')
+            ->where([
+            'filename' => $attachment->filename,
+            'model' => $attachment->model,
+            'foreign_key' => $attachment->foreign_key,
+            'md5' => $attachment->md5,
+            'details'=>$attachment->details])->first();
+            if($existing) return $existing;
+            
         $save = $this->save($attachment);
         return ($save) ? true : false;
     }
@@ -123,10 +135,22 @@ class AttachmentsTable extends Table
             'size' => $info['filesize'],
             'filetype' => $info['mime'],
             'md5' => $file->md5(true),
-            'tmpPath' => $filePath,
-    	]);
+            'tmpPath' => $filePath
+        ]);
         
-        if($details) $attachment->details = json_encode($details);
+        if ($details)
+            $attachment->details = json_encode($details);
+        
+        // if the same thing return existing
+        $existing = $this->find('all')
+            ->where([
+            'filename' => $attachment->filename,
+            'model' => $attachment->model,
+            'foreign_key' => $attachment->foreign_key,
+            'md5' => $attachment->md5,
+            'details'=>$attachment->details])->first();
+        if($existing) return $existing;
+        
     	$save = $this->save($attachment);
     	return ($save) ? $attachment : false;
     }

@@ -166,9 +166,34 @@ class AttachmentsController extends AppController
     
     public function list($model, $fk)
     {
+        $this->viewBuilder()->setTheme('Uskur/RemarkTemplate');
+        $this->viewBuilder()->setLayout('Uskur/RemarkTemplate.topbar-pageaside-left');
         $model = str_replace('-', '/', $model);
-        $attachments = $this->Attachments->find('all',['conditions'=>['Attachments.model'=>$model,'Attachments.foreign_key'=>$fk]]);
+        $attachments = $this->Attachments->find('all');
+        $attachments->where(['Attachments.model'=>$model,'Attachments.foreign_key'=>$fk]);
+        if($this->request->getQuery('filter') == 'image') {
+            $attachments->where(['Attachments.filetype LIKE'=>'image%']);
+        }
+        
         $this->set('attachments',$attachments);
+        $this->set('model',$model);
+        $this->set('fk',$fk);
         $this->set('_serialize', ['attachments']);
     }
+    
+    public function fileAttribute($id)
+    {
+        $attachment = $this->Attachments->get($id);
+        if ($this->request->is('post')) {
+            foreach($this->request->getData() as $detail=>$value) {
+                if($detail == 'id') continue;
+                $attachment->setDetail($detail, $value);
+            }
+            $this->Attachments->save($attachment);
+        }
+        
+        $this->set('attachment',$attachment);
+        $this->set('_serialize',['attachment']);
+    }
+
 }
