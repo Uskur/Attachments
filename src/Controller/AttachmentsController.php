@@ -2,7 +2,7 @@
 namespace Uskur\Attachments\Controller;
 
 use Uskur\Attachments\Controller\AppController;
-use \Eventviva\ImageResize;
+use Gumlet\ImageResize;
 use Cake\ORM\TableRegistry;
 use Cake\Filesystem\File;
 /**
