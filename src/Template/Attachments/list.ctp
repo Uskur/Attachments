@@ -194,7 +194,7 @@ function returnCkFile(id, name){
 $(function () { 
 	$.ajaxSetup({
 	    headers: {
-	        'X-CSRF-TOKEN': Cookies.get("csrfToken")
+	        'X-CSRF-TOKEN': "<?= $this->request->getParam('_csrfToken') ?>"
 	    }
 	});
 	
