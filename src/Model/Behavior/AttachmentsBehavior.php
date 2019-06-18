@@ -61,16 +61,16 @@ class AttachmentsBehavior extends Behavior
         $this->_table->hasMany('Attachments', [
             'className' => 'Uskur/Attachments.Attachments',
             'conditions' => [
-                'Attachments.model' => $this->_table->registryAlias()
+                'Attachments.model' => $this->_table->getRegistryAlias()
             ],
             'foreignKey' => 'foreign_key',
             'dependent' => true
         ]);
 
-        $this->Attachments->belongsTo($this->_table->registryAlias(), [
+        $this->Attachments->belongsTo($this->_table->getRegistryAlias(), [
             'className' => 'Uskur/Attachments.Attachments',
             'conditions' => [
-                'Attachments.model' => $this->_table->registryAlias()
+                'Attachments.model' => $this->_table->getRegistryAlias()
             ],
             'foreignKey' => 'foreign_key'
         ]);
