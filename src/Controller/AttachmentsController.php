@@ -16,7 +16,7 @@ class AttachmentsController extends AppController
     /**
      * Add method
      *
-     * @return \Cake\Network\Response|void Redirects on successful add, renders view otherwise.
+     * @return \Cake\Http\Response|void Redirects on successful add, renders view otherwise.
      */
     public function add($model = null, $fk = null)
     {
@@ -25,7 +25,7 @@ class AttachmentsController extends AppController
         	if(is_null($fk)) $fk = $this->request->getData('fk');
         	if(is_null($model)) $model = $this->request->getData('model');
         	$model = str_replace('-', '/', $model);
-        	$Model = TableRegistry::get($model);
+        	$Model = TableRegistry::getTableLocator()->get($model);
         	$entity = $Model->get($fk);
         	if($this->request->getData('files')) {
         	    foreach($this->request->getData('files') as $file) {
@@ -46,8 +46,8 @@ class AttachmentsController extends AppController
      * Edit method
      *
      * @param string|null $id Attachment id.
-     * @return \Cake\Network\Response|void Redirects on successful edit, renders view otherwise.
-     * @throws \Cake\Network\Exception\NotFoundException When record not found.
+     * @return \Cake\Http\Response|void Redirects on successful edit, renders view otherwise.
+     * @throws \Cake\Http\Exception\NotFoundException When record not found.
      */
     public function edit($id = null)
     {
@@ -72,7 +72,7 @@ class AttachmentsController extends AppController
      * Delete method
      *
      * @param string|null $id Attachment id.
-     * @return \Cake\Network\Response|null Redirects to index.
+     * @return \Cake\Http\Response|null Redirects to index.
      * @throws \Cake\Datasource\Exception\RecordNotFoundException When record not found.
      */
     public function delete($id = null)
@@ -118,11 +118,11 @@ class AttachmentsController extends AppController
     		throw new \Exception("File {$cacheFile} cannot be read.");
     	}
     	$file = new File($cacheFile);
-    	$this->response->file($cacheFile,['download'=>false,'name'=>(isset($attachment)?$attachment->filename:null)]);
-    	$this->response->type($file->mime());
-    	$this->response->cache('-1 minute', '+1 month');
-    	$this->response->expires('+1 month');
-    	$this->response->modified($file->lastChange());
+    	$this->response->withFile($cacheFile,['download'=>false,'name'=>(isset($attachment)?$attachment->filename:null)]);
+    	$this->response->withType($file->mime());
+    	$this->response->withCache('-1 minute', '+1 month');
+    	$this->response->withExpires('+1 month');
+    	$this->response->withModified($file->lastChange());
     	if ($this->response->checkNotModified($this->request)) {
     	    return $this->response;
     	}
@@ -135,8 +135,8 @@ class AttachmentsController extends AppController
     	if(!file_exists($attachment->path)){
     		throw new \Exception("File {$attachment->path} cannot be read.");
     	}
-    	$this->response->type($attachment->filetype);
-    	$this->response->file($attachment->path,['download'=>false,'name'=>$attachment->filename]);
+    	$this->response->withType($attachment->filetype);
+    	$this->response->withFile($attachment->path,['download'=>false,'name'=>$attachment->filename]);
     	return $this->response;
     }
 
@@ -145,8 +145,8 @@ class AttachmentsController extends AppController
         if(!file_exists($attachment->path)){
             throw new \Exception("File {$attachment->path} cannot be read.");
         }
-        $this->response->type($attachment->filetype);
-        $this->response->file($attachment->path,['download'=>true,'name'=>$attachment->filename]);
+        $this->response->withType($attachment->filetype);
+        $this->response->withFile($attachment->path,['download'=>true,'name'=>$attachment->filename]);
         return $this->response;
     }
     

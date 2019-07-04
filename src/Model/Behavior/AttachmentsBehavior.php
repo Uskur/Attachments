@@ -6,6 +6,8 @@ use Cake\Event\Event;
 use Cake\ORM\Behavior;
 use Cake\ORM\Table;
 use Cake\ORM\TableRegistry;
+use Uskur\Attachments\Model\Entity\Attachment;
+use Uskur\Attachments\Model\Table\AttachmentsTable;
 
 /**
  * Attachments behavior
@@ -55,7 +57,7 @@ class AttachmentsBehavior extends Behavior
      */
     public function initialize(array $config)
     {
-        $this->Attachments = TableRegistry::get('Uskur/Attachments.Attachments');
+        $this->Attachments = TableRegistry::getTableLocator()->get('Uskur/Attachments.Attachments');
 
         // Dynamically attach the hasMany relationship
         $this->_table->hasMany('Attachments', [
@@ -139,7 +141,7 @@ class AttachmentsBehavior extends Behavior
     /**
      * method to save the tags of an attachment
      *
-     * @param  Attachments\Model\Entity\Attachment $attachment the attachment entity
+     * @param  Attachment $attachment the attachment entity
      * @param  array $tags       array of tags
      * @return bool
      */
@@ -162,7 +164,7 @@ class AttachmentsBehavior extends Behavior
     /**
      * removes given $tag from every attachment belonging to the same entity as given $attachment
      *
-     * @param  Attachments\Model\Entity\Attachment  $attachment the attachment entity which should get the exclusive tag
+     * @param  Attachment  $attachment the attachment entity which should get the exclusive tag
      * @param  string                               $tag        the exclusive tag to be removed
      * @return bool
      */

@@ -2,12 +2,15 @@
 namespace Uskur\Attachments\Model\Table;
 
 use Uskur\Attachments\Model\Entity\Attachment;
+use ArrayObject;
+use Cake\ORM\Entity;
 use Cake\ORM\Query;
 use Cake\ORM\RulesChecker;
 use Cake\ORM\Table;
 use Cake\Validation\Validator;
 use Cake\Filesystem\File;
 use Cake\Filesystem\Folder;
+use Cake\Datasource\EntityInterface;
 use Cake\Event\Event;
 
 /**
@@ -50,17 +53,17 @@ class AttachmentsTable extends Table
     {
         $validator
             ->uuid('id')
-            ->allowEmpty('id', 'create');
+            ->allowEmptyString('id', 'create');
 
         $validator
-            ->allowEmpty('filename');
+            ->allowEmptyString('filename');
 
         $validator
-            ->allowEmpty('md5');
+            ->allowEmptyString('md5');
 
         $validator
             ->integer('size')
-            ->allowEmpty('size');
+            ->allowEmptyString('size');
 
         return $validator;
     }
@@ -84,7 +87,7 @@ class AttachmentsTable extends Table
      *
      * @param EntityInterface $entity Entity
      * @param string $upload Upload
-     * @return entity
+     * @return boolean
      */
     public function addUpload($entity, $upload, $allowed_types = [], $details = [])
     {

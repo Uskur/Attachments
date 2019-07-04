@@ -12,5 +12,11 @@ Router::plugin(
     }
 );
 
-Router::connect('/file/*', ['plugin' => 'Uskur/Attachments', 'controller' => 'Attachments', 'action' => 'file']);
-Router::connect('/image/*', ['plugin' => 'Uskur/Attachments', 'controller' => 'Attachments', 'action' => 'image']);
+Router::plugin('Uskur/Attachments', function ($routes) {
+    // Routes connected here are prefixed with '/debugger' and
+    // have the plugin route element set to 'DebugKit'.
+    $routes->connect('/file/*', ['plugin' => 'Uskur/Attachments', 'controller' => 'Attachments', 'action' => 'file']);
+    $routes->connect('/image/*', ['plugin' => 'Uskur/Attachments', 'controller' => 'Attachments', 'action' => 'image']);
+    
+    $routes->fallbacks(DashedRoute::class);
+});
