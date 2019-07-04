@@ -118,16 +118,16 @@ class AttachmentsController extends AppController
     		throw new \Exception("File {$cacheFile} cannot be read.");
     	}
     	$file = new File($cacheFile);
-    	$this->response->withFile($cacheFile,['download'=>false,'name'=>(isset($attachment)?$attachment->filename:null)]);
-    	$this->response->withType($file->mime());
-    	$this->response->withCache('-1 minute', '+1 month');
-    	$this->response->withExpires('+1 month');
-    	$this->response->withModified($file->lastChange());
-    	if ($this->response->checkNotModified($this->request)) {
-    	    return $this->response;
+    	$response = $this->response->withFile($cacheFile,['download'=>false,'name'=>(isset($attachment)?$attachment->filename:null)])
+    	->withType($file->mime())
+    	->withCache('-1 minute', '+1 month')
+    	->withExpires('+1 month')
+    	->withModified($file->lastChange());
+    	if ($response->checkNotModified($this->request)) {
+    	    return $response;
     	}
     	
-    	return $this->response;
+    	return $response;
     }
     
     public function file($id, $name = null){
@@ -135,9 +135,9 @@ class AttachmentsController extends AppController
     	if(!file_exists($attachment->path)){
     		throw new \Exception("File {$attachment->path} cannot be read.");
     	}
-    	$this->response->withType($attachment->filetype);
-    	$this->response->withFile($attachment->path,['download'=>false,'name'=>$attachment->filename]);
-    	return $this->response;
+    	$response = $this->response->withType($attachment->filetype)
+    	->withFile($attachment->path,['download'=>false,'name'=>$attachment->filename]);
+    	return $response;
     }
 
     public function download($id, $name = null){
@@ -145,9 +145,9 @@ class AttachmentsController extends AppController
         if(!file_exists($attachment->path)){
             throw new \Exception("File {$attachment->path} cannot be read.");
         }
-        $this->response->withType($attachment->filetype);
-        $this->response->withFile($attachment->path,['download'=>true,'name'=>$attachment->filename]);
-        return $this->response;
+        $response->withType($attachment->filetype)
+        ->withFile($attachment->path,['download'=>true,'name'=>$attachment->filename]);
+        return $response;
     }
     
     public function updatePosition($id = null, $newPosition = null)
