@@ -145,7 +145,7 @@ class AttachmentsController extends AppController
         if(!file_exists($attachment->path)){
             throw new \Exception("File {$attachment->path} cannot be read.");
         }
-        $response->withType($attachment->filetype)
+        $response = $this->response->withType($attachment->filetype)
         ->withFile($attachment->path,['download'=>true,'name'=>$attachment->filename]);
         return $response;
     }
