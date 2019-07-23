@@ -89,7 +89,7 @@ class AttachmentsBehavior extends Behavior
      */
     public function afterSave(Event $event, EntityInterface $entity)
     {
-        $uploads = $entity->get($this->config('formFieldName'));
+        $uploads = $entity->get($this->getConfig('formFieldName'));
         if (!empty($uploads)) {
         	if(isset($uploads[0]['name'])){
         		foreach($uploads as $upload){
@@ -110,7 +110,7 @@ class AttachmentsBehavior extends Behavior
      */
     public function getAttachmentsTags($list = true)
     {
-        $tags = $this->config('tags');
+        $tags = $this->getConfig('tags');
 
         if (!$list) {
             return $tags;
@@ -132,10 +132,10 @@ class AttachmentsBehavior extends Behavior
      */
     public function getTagCaption($tag)
     {
-        if (!isset($this->config('tags')[$tag])) {
+        if (!isset($this->getConfig('tags')[$tag])) {
             return '';
         }
-        return $this->config('tags')[$tag]['caption'];
+        return $this->getConfig('tags')[$tag]['caption'];
     }
 
     /**
@@ -149,9 +149,9 @@ class AttachmentsBehavior extends Behavior
     {
         $newTags = [];
         foreach ($tags as $tag) {
-            if (isset($this->config('tags')[$tag])) {
+            if (isset($this->getConfig('tags')[$tag])) {
                 $newTags[] = $tag;
-                if ($this->config('tags')[$tag]['exclusive'] === true) {
+                if ($this->getConfig('tags')[$tag]['exclusive'] === true) {
                     $this->_clearTag($attachment, $tag);
                 }
             }
