@@ -96,9 +96,9 @@ class AttachmentsController extends AppController
     	$cacheFolder = CACHE.'image';
         $type = IMAGETYPE_JPEG;
         //serve webp if the browser accepts
-        if($this->request->accepts('image/webp')) {
-            $type = IMAGETYPE_WEBP;
-        }
+        //if($this->request->accepts('image/webp')) {
+        //    $type = IMAGETYPE_WEBP;
+        //}
     	$cacheFile = $cacheFolder.DS.md5("{$id}w{$width}h{$height}c{$crop}q{$quality}e{$quality}t{$type}");
 
     	if(!file_exists($cacheFile)){
@@ -115,7 +115,7 @@ class AttachmentsController extends AppController
     		elseif($width) $image->resizeToWidth($width, $enlarge);
 
     		//preserve PNG for transparency
-    		if($attachment->filetype == 'image/png') $type = IMAGETYPE_PNG;
+            if($attachment->filetype == 'image/png' && $type != IMAGETYPE_WEBP) $type = IMAGETYPE_PNG;
     		$image->save($cacheFile,$type,$quality);
     	}
     	if(!file_exists($cacheFile)){
