@@ -94,11 +94,15 @@ class AttachmentsController extends AppController
     	$enlarge = $this->request->getQuery('e')?true:false;
     	$quality = $this->request->getQuery('q')?$this->request->getQuery('q'):75;
     	$cacheFolder = CACHE.'image';
-    	$cacheFile = $cacheFolder.DS.md5("{$id}w{$width}h{$height}c{$crop}q{$quality}e{$quality}");
-    	
+        $type = IMAGETYPE_JPEG;
+        //serve webp if the browser accepts
+        if($this->request->accepts('image/webp')) {
+            $type = IMAGETYPE_WEBP;
+        }
+    	$cacheFile = $cacheFolder.DS.md5("{$id}w{$width}h{$height}c{$crop}q{$quality}e{$quality}t{$type}");
+
     	if(!file_exists($cacheFile)){
     	    if(!file_exists($cacheFolder)) mkdir($cacheFolder);
-    	    
     		$attachment = $this->Attachments->get($id);
     		//@todo show mimetype icon if not an image type
     		if(!file_exists($attachment->path)){
@@ -109,7 +113,7 @@ class AttachmentsController extends AppController
     		elseif($width && $height) $image->resizeToBestFit($width, $height, $enlarge);
     		elseif($height) $image->resizeToHeight($height, $enlarge);
     		elseif($width) $image->resizeToWidth($width, $enlarge);
-    		$type = IMAGETYPE_JPEG;
+
     		//preserve PNG for transparency
     		if($attachment->filetype == 'image/png') $type = IMAGETYPE_PNG;
     		$image->save($cacheFile,$type,$quality);
