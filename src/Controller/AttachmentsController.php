@@ -108,7 +108,15 @@ class AttachmentsController extends AppController
     		if(!file_exists($attachment->path)){
     			throw new \Exception("File {$attachment->path} cannot be read.");
     		}
-    		$image = new ImageResize($attachment->path);
+    		$imagePath = $attachment->path;
+            //handle pdf, get first page
+    		if($attachment->filetype === 'application/pdf') {
+    		    $imagePath = "/tmp/".uniqid();
+                $imagick = new Imagick("{$attachment->path}[0]");
+                $imagick->setImageFormat('jpg');
+                file_put_contents($imagePath, $imagick);
+            }
+    		$image = new ImageResize($imagePath);
     		if($width && $height && $crop) $image->crop($width, $height, $enlarge);
     		elseif($width && $height) $image->resizeToBestFit($width, $height, $enlarge);
     		elseif($height) $image->resizeToHeight($height, $enlarge);
