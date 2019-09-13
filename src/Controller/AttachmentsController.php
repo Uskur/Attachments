@@ -112,7 +112,7 @@ class AttachmentsController extends AppController
             //handle pdf, get first page
     		if($attachment->filetype === 'application/pdf') {
     		    $imagePath = "/tmp/".uniqid();
-                $imagick = new Imagick("{$attachment->path}[0]");
+                $imagick = new \Imagick("{$attachment->path}[0]");
                 $imagick->setImageFormat('jpg');
                 file_put_contents($imagePath, $imagick);
             }
