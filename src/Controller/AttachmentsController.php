@@ -96,7 +96,7 @@ class AttachmentsController extends AppController
     	$cacheFolder = CACHE.'image';
         $type = IMAGETYPE_JPEG;
         //serve webp if the browser accepts
-        if($this->request->accepts('image/webp')) {
+        if($this->request->accepts('image/webp') && defined('IMAGETYPE_WEBP')) {
             $type = IMAGETYPE_WEBP;
         }
     	$cacheFile = $cacheFolder.DS.md5("{$id}w{$width}h{$height}c{$crop}q{$quality}e{$quality}t{$type}");
