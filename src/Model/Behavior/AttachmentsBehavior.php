@@ -66,7 +66,8 @@ class AttachmentsBehavior extends Behavior
                 'Attachments.model' => $this->_table->getRegistryAlias()
             ],
             'foreignKey' => 'foreign_key',
-            'dependent' => true
+            'dependent' => true,
+            'cascadeCallbacks' => true
         ]);
 
         $this->Attachments->belongsTo($this->_table->getRegistryAlias(), [
