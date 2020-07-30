@@ -127,7 +127,7 @@ class AttachmentsController extends AppController
         //handle output type
         $options['type'] = IMAGETYPE_JPEG;
         //serve webp if the browser accepts
-        if ($this->request->accepts('image/webp')) {
+        if ($this->request->accepts('image/webp') && defined('IMAGETYPE_WEBP')) {
             $options['type'] = IMAGETYPE_WEBP;
         }
 
