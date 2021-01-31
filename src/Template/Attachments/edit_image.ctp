@@ -35,7 +35,9 @@ $this->start('context-menu'); ?>
 </div>
 <div class="row">
     <div
-        class="col-12"><?= $this->Html->image(['prefix' => false, 'plugin' => 'Uskur/Attachments', 'controller' => 'Attachments', 'action' => 'image', $image->id], ['id' => 'image']) ?></div>
+        class="col-12">
+        <div><?= $this->Html->image(['prefix' => false, 'plugin' => 'Uskur/Attachments', 'controller' => 'Attachments', 'action' => 'image', $image->id], ['id' => 'image']) ?></div>
+    </div>
 </div>
 <?php
 echo $this->Form->create($image, ['type' => 'file', 'id' => 'imageSave']);
@@ -113,4 +115,13 @@ echo $this->Form->end();
 
 
 </script>
+<style>
+    #image {
+        display: block;
+
+        /* This rule is very important, please don't ignore this */
+        max-width: 100%;
+        max-height: 100%;
+    }
+</style>
 <?php $this->end(); ?>
