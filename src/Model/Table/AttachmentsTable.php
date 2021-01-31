@@ -1,4 +1,5 @@
 <?php
+
 namespace Uskur\Attachments\Model\Table;
 
 use Uskur\Attachments\Model\Entity\Attachment;
@@ -38,7 +39,7 @@ class AttachmentsTable extends Table
         $this->addBehavior('Timestamp');
         $this->addBehavior('ADmad/Sequence.Sequence', [
             'order' => 'sequence',
-            'scope' => ['model','foreign_key'],
+            'scope' => ['model', 'foreign_key'],
             'start' => 1,
         ]);
     }
@@ -77,8 +78,8 @@ class AttachmentsTable extends Table
      */
     public function buildRules(RulesChecker $rules)
     {
-            // this is to endorce single file per attachment, must be made dynamic!
-            // $rules->add($rules->isUnique(['model', 'foreign_key']));
+        // this is to endorce single file per attachment, must be made dynamic!
+        // $rules->add($rules->isUnique(['model', 'foreign_key']));
         return $rules;
     }
 
@@ -91,12 +92,12 @@ class AttachmentsTable extends Table
      */
     public function addUpload($entity, $upload, $allowed_types = [], $details = [])
     {
-        if (! empty($allowed_types) && ! in_array($upload['type'], $allowed_types))
+        if (!empty($allowed_types) && !in_array($upload['type'], $allowed_types))
             throw new \Exception("File type not allowed.");
-        if (! file_exists($upload['tmp_name'])) {
+        if (!file_exists($upload['tmp_name'])) {
             throw new \Exception("File {$upload['tmp_name']} does not exist.");
         }
-        if (! is_readable($upload['tmp_name'])) {
+        if (!is_readable($upload['tmp_name'])) {
             throw new \Exception("File {$upload['tmp_name']} cannot be read.");
         }
         $file = new File($upload['tmp_name']);
@@ -112,17 +113,17 @@ class AttachmentsTable extends Table
         ]);
         if ($details)
             $attachment->details = json_encode($details);
-        
+
         // if the same thing return existing
         $existing = $this->find('all')
             ->where([
-            'filename' => $attachment->filename,
-            'model' => $attachment->model,
-            'foreign_key' => $attachment->foreign_key,
-            'md5' => $attachment->md5,
-            'details'=>$attachment->details])->first();
-            if($existing) return $existing;
-            
+                'filename' => $attachment->filename,
+                'model' => $attachment->model,
+                'foreign_key' => $attachment->foreign_key,
+                'md5' => $attachment->md5,
+                'details' => $attachment->details])->first();
+        if ($existing) return $existing;
+
         $save = $this->save($attachment);
         return ($save) ? true : false;
     }
@@ -140,24 +141,24 @@ class AttachmentsTable extends Table
             'md5' => $file->md5(true),
             'tmpPath' => $filePath
         ]);
-        
+
         if ($details)
             $attachment->details = json_encode($details);
-        
+
         // if the same thing return existing
         $existing = $this->find('all')
             ->where([
-            'filename' => $attachment->filename,
-            'model' => $attachment->model,
-            'foreign_key' => $attachment->foreign_key,
-            'md5' => $attachment->md5,
-            'details'=>$attachment->details])->first();
-        if($existing) return $existing;
-        
-    	$save = $this->save($attachment);
-    	return ($save) ? $attachment : false;
+                'filename' => $attachment->filename,
+                'model' => $attachment->model,
+                'foreign_key' => $attachment->foreign_key,
+                'md5' => $attachment->md5,
+                'details' => $attachment->details])->first();
+        if ($existing) return $existing;
+
+        $save = $this->save($attachment);
+        return ($save) ? $attachment : false;
     }
-    
+
     /**
      * afterSave Event. If an attachment entity has its tmpPath value set, it will be moved
      * to the defined filepath
@@ -170,40 +171,65 @@ class AttachmentsTable extends Table
      */
     public function afterSave(Event $event, Attachment $attachment, \ArrayObject $options)
     {
-    	if ($attachment->tmpPath) {
-    		$path = $attachment->get('path');
-    		if(is_uploaded_file($attachment->tmpPath)) {
-	    		if (!move_uploaded_file($attachment->tmpPath, $path)) {
-	    			throw new \Exception("Temporary file {$attachment->tmpPath} could not be moved to {$attachment->path}");
-	    		}
-    		}
-    		else {
-    			if(!copy($attachment->tmpPath, $path)) {
-    				throw new \Exception("File {$attachment->tmpPath} could not be copied to {$attachment->path}");
-    			}
-    		}
-    		$attachment->tmpPath = null;
-    	}
+        if ($attachment->tmpPath) {
+            $path = $attachment->get('path');
+            if (is_uploaded_file($attachment->tmpPath)) {
+                if (!move_uploaded_file($attachment->tmpPath, $path)) {
+                    throw new \Exception("Temporary file {$attachment->tmpPath} could not be moved to {$attachment->path}");
+                }
+            } else {
+                if (!copy($attachment->tmpPath, $path)) {
+                    throw new \Exception("File {$attachment->tmpPath} could not be copied to {$attachment->path}");
+                }
+            }
+            $attachment->tmpPath = null;
+        }
     }
-    
+
     public function afterDelete(Event $event, Attachment $attachment, \ArrayObject $options)
     {
-    	if (file_exists($attachment->get('path'))) {
-    		$otherExisting = $this->find('all',['conditions'=>['Attachments.md5'=>$attachment->md5]])->count();
-    		if ($otherExisting == 0) {
-    			unlink($attachment->get('path'));
-    		}
-    	}
+        if (file_exists($attachment->get('path'))) {
+            $otherExisting = $this->find('all', ['conditions' => ['Attachments.md5' => $attachment->md5]])->count();
+            if ($otherExisting == 0) {
+                unlink($attachment->get('path'));
+            }
+        }
     }
-    
-    public function getAttachmentsOfArticle($articleId, $type = 'image'){
-    	$attachments = $this->find('all',[
-    			'conditions'=>[
-    					'Attachments.article_id'=>$articleId,
-    					'Attachments.filetype LIKE'=>"$type/%"
-    			],
-    			'contain'=>[]
-    	]);
-    	return $attachments;
+
+    public function getAttachmentsOfArticle($articleId, $type = 'image')
+    {
+        $attachments = $this->find('all', [
+            'conditions' => [
+                'Attachments.article_id' => $articleId,
+                'Attachments.filetype LIKE' => "$type/%"
+            ],
+            'contain' => []
+        ]);
+        return $attachments;
+    }
+
+    /**
+     * Replace file
+     * @param $id
+     * @param $path
+     * @return bool
+     */
+    public function replaceFile($id, $tmpPath)
+    {
+        $currentAttachment = $this->get($id);
+        $this->delete($currentAttachment);
+
+        $file = new File($tmpPath);
+        $attachment = $this->newEntity([
+            'model' => $currentAttachment->model,
+            'foreign_key' => $currentAttachment->foreign_key,
+            'filename' => $currentAttachment->filename,
+            'size' => $file->size(),
+            'filetype' => $file->mime(),
+            'md5' => $file->md5(true),
+            'tmpPath' => $tmpPath
+        ]);
+
+        return $this->save($attachment) ? $attachment : false;
     }
 }

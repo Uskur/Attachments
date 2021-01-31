@@ -377,4 +377,30 @@ class AttachmentsController extends AppController
         exit;
     }
 
+    public function editImage($id)
+    {
+        $image = $this->Attachments->get($id);
+        if ($this->request->is(['patch', 'post', 'put'])) {
+            $tempPath = tempnam('/tmp', 'replace');
+            $img = str_replace('data:image/png;base64,', '', $this->request->getData('image'));
+            $img = str_replace(' ', '+', $img);
+            file_put_contents($tempPath, base64_decode($img));
+
+            if ($this->Attachments->replaceFile($id, $tempPath)) {
+                $this->Flash->success(__('Image modified.'));
+                $redirectTo = $this->getRequest()->getSession()->consume('Attachment.redirectAfter');
+                if($redirectTo) {
+                    return $this->redirect($redirectTo);
+                }
+            } else {
+                $this->Flash->error(__('Image could not be saved. Please, try again.'));
+            }
+        }
+        else {
+            $this->getRequest()->getSession()->write('Attachment.redirectAfter', $this->referer());
+        }
+        $this->set('image', $image);
+
+    }
+
 }
