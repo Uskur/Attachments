@@ -133,7 +133,7 @@ class AttachmentsTable extends Table
         $file = new File($filePath);
         $info = $file->info();
         $attachment = $this->newEntity([
-            'model' => $entity->source(),
+            'model' => $entity->getSource(),
             'foreign_key' => $entity->id,
             'filename' => $info['basename'],
             'size' => $info['filesize'],
