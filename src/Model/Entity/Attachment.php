@@ -18,6 +18,7 @@ use Uskur\Attachments\Model\Entity\DetailsTrait;
  * @property \Cake\I18n\Time $created
  * @property string $article_id
  * @property \App\Model\Entity\Article $article
+ * @property string $extension
  */
 class Attachment extends Entity
 {
@@ -36,9 +37,9 @@ class Attachment extends Entity
         '*' => true,
         'id' => false,
     ];
-    
+
     protected $_virtual = ['details_array','readable_size','readable_created'];
-    
+
     protected function _getPath()
     {
     	$targetDir = Configure::read('Attachment.path').DS.substr($this->_properties['md5'],0,2);
@@ -46,17 +47,23 @@ class Attachment extends Entity
     	if (!$folder->create($targetDir)) {
     		throw new \Exception("Folder {$targetDir} could not be created.");
     	}
-    	
+
     	return $targetDir.DS.$this->_properties['md5'];
     }
-    
+
     protected function _getReadableSize()
     {
         return Number::toReadableSize($this->_properties['size']);
     }
-    
+
     protected function _getReadableCreated()
     {
         return $this->_properties['created']->format('d/m/Y H:i:s');
+    }
+
+    protected function _getExtension()
+    {
+        $pathinfo = pathinfo($this->filename);
+        return $pathinfo['extension'];
     }
 }
