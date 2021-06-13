@@ -3,10 +3,10 @@
     "description": "Attachments plugin for CakePHP",
     "type": "cakephp-plugin",
     "require": {
-        "php": ">=5.6",
-        "cakephp/cakephp": ">=3.4 <4.0.0",
-        "admad/cakephp-sequence": "^2.0",
-        "gumlet/php-image-resize": "^1.9"
+        "php": ">=7.2",
+        "cakephp/cakephp": "^4.1"
+        "admad/cakephp-sequence": "^3.0",
+        "gumlet/php-image-resize": "^2.0"
     },
     "require-dev": {
         "phpunit/phpunit": "*"
