@@ -6,6 +6,8 @@ use Cake\Filesystem\File;
 use Cake\Filesystem\Folder;
 use Cake\I18n\Number;
 use Cake\Core\Configure;
+use Laminas\Diactoros\UploadedFile;
+use SplFileInfo;
 use Uskur\Attachments\Model\Entity\DetailsTrait;
 
 /**
@@ -19,10 +21,12 @@ use Uskur\Attachments\Model\Entity\DetailsTrait;
  * @property string $article_id
  * @property \App\Model\Entity\Article $article
  * @property string $extension
+ * @property string $path
+ * @property UploadedFile $upload
+ * @property array $details
  */
 class Attachment extends Entity
 {
-    use DetailsTrait;
 
     /**
      * Fields that can be mass assigned using newEntity() or patchEntity().
@@ -42,23 +46,25 @@ class Attachment extends Entity
 
     protected function _getPath()
     {
-    	$targetDir = Configure::read('Attachment.path').DS.substr($this->_properties['md5'],0,2);
-    	$folder = new Folder();
-    	if (!$folder->create($targetDir)) {
-    		throw new \Exception("Folder {$targetDir} could not be created.");
-    	}
+    	$targetDir = Configure::read('Attachment.path').DS.substr($this->md5,0,2);
+        $directory = new SplFileInfo($targetDir);
+        if(!$directory->isDir()) {
+            if(!mkdir($targetDir, null, true)) {
+                throw new \Exception("Folder {$targetDir} could not be created.");
+            }
+        }
 
-    	return $targetDir.DS.$this->_properties['md5'];
+    	return $targetDir.DS.$this->md5;
     }
 
     protected function _getReadableSize()
     {
-        return Number::toReadableSize($this->_properties['size']);
+        return Number::toReadableSize($this->size);
     }
 
     protected function _getReadableCreated()
     {
-        return $this->_properties['created']->format('d/m/Y H:i:s');
+        return $this->created->format('d/m/Y H:i:s');
     }
 
     protected function _getExtension()
