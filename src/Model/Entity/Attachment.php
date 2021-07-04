@@ -49,7 +49,7 @@ class Attachment extends Entity
     	$targetDir = Configure::read('Attachment.path').DS.substr($this->md5,0,2);
         $directory = new SplFileInfo($targetDir);
         if(!$directory->isDir()) {
-            if(!mkdir($targetDir, null, true)) {
+            if(!mkdir($targetDir, 644, true)) {
                 throw new \Exception("Folder {$targetDir} could not be created.");
             }
         }
