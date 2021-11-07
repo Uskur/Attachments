@@ -6,6 +6,7 @@ use Cake\Filesystem\File;
 use Cake\Filesystem\Folder;
 use Cake\I18n\Number;
 use Cake\Core\Configure;
+use JeremyHarris\LazyLoad\ORM\LazyLoadEntityTrait;
 use Uskur\Attachments\Model\Entity\DetailsTrait;
 
 /**
@@ -23,6 +24,8 @@ use Uskur\Attachments\Model\Entity\DetailsTrait;
 class Attachment extends Entity
 {
     use DetailsTrait;
+    use LazyLoadEntityTrait;
+
 
     /**
      * Fields that can be mass assigned using newEntity() or patchEntity().

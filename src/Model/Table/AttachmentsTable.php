@@ -42,6 +42,20 @@ class AttachmentsTable extends Table
             'scope' => ['model', 'foreign_key'],
             'start' => 1,
         ]);
+
+        $this->belongsTo('ParentAttachment', [
+            'className' => 'Uskur/Attachments.Attachments',
+            'foreignKey' => 'foreign_key',
+            'conditions' => ['SubAttachments.model'=>'Attachments'],
+            'joinType' => 'LEFT'
+        ]);
+        $this->hasMany('SubAttachments', [
+            'className' => 'Uskur/Attachments.Attachments',
+            'foreignKey' => 'foreign_key',
+            'conditions' => ['SubAttachments.model'=>'Attachments'],
+            'dependent' => true
+        ]);
+
     }
 
     /**
