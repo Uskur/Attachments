@@ -155,8 +155,11 @@ class AttachmentsController extends AppController
             if ($attachment->filetype === 'application/pdf') {
                 $imagePath = "/tmp/" . uniqid();
                 $imagick = new \Imagick("{$attachment->path}[0]");
+                $imagick->setResolution(300, 300);
                 $imagick->setBackgroundColor('white');
                 $imagick->setImageFormat('jpg');
+                $imagick->mergeImageLayers(\Imagick::LAYERMETHOD_FLATTEN);
+                $imagick->setImageAlphaChannel(\Imagick::ALPHACHANNEL_REMOVE);
                 file_put_contents($imagePath, $imagick);
             }
             $image = new ImageResize($imagePath);
