@@ -34,6 +34,7 @@ class AttachmentsBehavior extends Behavior
      */
     protected $_defaultConfig = [
         'formFieldName' => 'attachment_uploads',
+        'modelName' => null,
         'tags' => [],
         // function (Attachment $attachment, EntityInterface $relatedEntity) : bool
         'downloadAuthorizeCallback' => null
@@ -63,7 +64,7 @@ class AttachmentsBehavior extends Behavior
         $this->_table->hasMany('Attachments', [
             'className' => 'Uskur/Attachments.Attachments',
             'conditions' => [
-                'Attachments.model' => $this->_table->getRegistryAlias()
+                'Attachments.model' => $this->getConfig('modelName')?$this->getConfig('modelName'):$this->_table->getRegistryAlias()
             ],
             'foreignKey' => 'foreign_key',
             'dependent' => true,
@@ -73,7 +74,7 @@ class AttachmentsBehavior extends Behavior
         $this->Attachments->belongsTo($this->_table->getRegistryAlias(), [
             'className' => 'Uskur/Attachments.Attachments',
             'conditions' => [
-                'Attachments.model' => $this->_table->getRegistryAlias()
+                'Attachments.model' => $this->getConfig('modelName')?$this->getConfig('modelName'):$this->_table->getRegistryAlias()
             ],
             'foreignKey' => 'foreign_key'
         ]);
