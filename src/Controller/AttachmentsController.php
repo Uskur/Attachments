@@ -281,13 +281,16 @@ class AttachmentsController extends AppController
     {
         $attachment = $this->Attachments->get($id);
         if ($this->request->is('post')) {
+            $attachmentDetails = $attachment->details;
             foreach ($this->request->getData() as $detail => $value) {
                 if ($detail == 'id') {
                     continue;
                 }
-                $attachment->setDetail($detail, $value);
+                $attachmentDetails[$detail] = $value;
             }
+            $attachment->details = $attachmentDetails;
             $this->Attachments->save($attachment);
+            return $this->redirect($this->referer());
         }
 
         $this->set('attachment', $attachment);
