@@ -46,16 +46,15 @@ class AttachmentsTable extends Table
         $this->belongsTo('ParentAttachment', [
             'className' => 'Uskur/Attachments.Attachments',
             'foreignKey' => 'foreign_key',
-            'conditions' => ['SubAttachments.model'=>'Attachments'],
-            'joinType' => 'LEFT'
+            'conditions' => ['SubAttachments.model' => 'Attachments'],
+            'joinType' => 'LEFT',
         ]);
         $this->hasMany('SubAttachments', [
             'className' => 'Uskur/Attachments.Attachments',
             'foreignKey' => 'foreign_key',
-            'conditions' => ['SubAttachments.model'=>'Attachments'],
-            'dependent' => true
+            'conditions' => ['SubAttachments.model' => 'Attachments'],
+            'dependent' => true,
         ]);
-
     }
 
     /**
@@ -64,11 +63,11 @@ class AttachmentsTable extends Table
      * @param \Cake\Validation\Validator $validator Validator instance.
      * @return \Cake\Validation\Validator
      */
-    public function validationDefault(Validator $validator)
+    public function validationDefault(Validator $validator): Validator
     {
         $validator
             ->uuid('id')
-            ->allowEmptyString('id', 'create');
+            ->allowEmptyString('id', null, 'create');
 
         $validator
             ->allowEmptyString('filename');
@@ -98,16 +97,20 @@ class AttachmentsTable extends Table
     }
 
     /**
-     * Save one Attachemnt
+     * Save one Attachment
      *
      * @param EntityInterface $entity Entity
      * @param string $upload Upload
-     * @return boolean
+     * @param array $allowed_types Allowed types
+     * @param array $details Details
+     * @return bool|EntityInterface
+     * @throws \Exception
      */
     public function addUpload($entity, $upload, $allowed_types = [], $details = [])
     {
-        if (!empty($allowed_types) && !in_array($upload['type'], $allowed_types))
+        if (!empty($allowed_types) && !in_array($upload['type'], $allowed_types)) {
             throw new \Exception("File type not allowed.");
+        }
         if (!file_exists($upload['tmp_name'])) {
             throw new \Exception("File {$upload['tmp_name']} does not exist.");
         }
@@ -117,28 +120,31 @@ class AttachmentsTable extends Table
         $file = new File($upload['tmp_name']);
         $info = $file->info();
         $attachment = $this->newEntity([
-            'model' => $entity->source(),
+            'model' => $entity->getSource(),
             'foreign_key' => $entity->id,
             'filename' => $upload['name'],
             'size' => $info['filesize'],
             'filetype' => $info['mime'],
             'md5' => $file->md5(true),
-            'tmpPath' => $upload['tmp_name']
+            'tmpPath' => $upload['tmp_name'],
         ]);
-        if ($details)
+        if ($details) {
             $attachment->details = json_encode($details);
+        }
 
         // if the same thing return existing
-        $existing = $this->find('all')
+        $existing = $this->find()
             ->where([
                 'filename' => $attachment->filename,
                 'model' => $attachment->model,
                 'foreign_key' => $attachment->foreign_key,
                 'md5' => $attachment->md5,
                 'details' => $attachment->details])->first();
-        if ($existing) return $existing;
-
+        if ($existing) {
+            return $existing;
+        }
         $save = $this->save($attachment);
+
         return ($save) ? true : false;
     }
 
@@ -153,23 +159,26 @@ class AttachmentsTable extends Table
             'size' => $info['filesize'],
             'filetype' => $info['mime'],
             'md5' => $file->md5(true),
-            'tmpPath' => $filePath
+            'tmpPath' => $filePath,
         ]);
 
-        if ($details)
+        if ($details) {
             $attachment->details = json_encode($details);
+        }
 
         // if the same thing return existing
-        $existing = $this->find('all')
+        $existing = $this->find()
             ->where([
                 'filename' => $attachment->filename,
                 'model' => $attachment->model,
                 'foreign_key' => $attachment->foreign_key,
                 'md5' => $attachment->md5,
                 'details' => $attachment->details])->first();
-        if ($existing) return $existing;
-
+        if ($existing) {
+            return $existing;
+        }
         $save = $this->save($attachment);
+
         return ($save) ? $attachment : false;
     }
 
@@ -215,20 +224,21 @@ class AttachmentsTable extends Table
         $attachments = $this->find('all', [
             'conditions' => [
                 'Attachments.article_id' => $articleId,
-                'Attachments.filetype LIKE' => "$type/%"
+                'Attachments.filetype LIKE' => "$type/%",
             ],
-            'contain' => []
+            'contain' => [],
         ]);
+
         return $attachments;
     }
 
     /**
      * Replace file
-     * @param $id
-     * @param $path
-     * @return bool
+     * @param string $id Attachment ID
+     * @param string $tmpPath Path to the new file
+     * @return bool|Attachment
      */
-    public function replaceFile($id, $tmpPath)
+    public function replaceFile(string $id, string $tmpPath)
     {
         $currentAttachment = $this->get($id);
         $this->delete($currentAttachment);
@@ -241,7 +251,7 @@ class AttachmentsTable extends Table
             'size' => $file->size(),
             'filetype' => $file->mime(),
             'md5' => $file->md5(true),
-            'tmpPath' => $tmpPath
+            'tmpPath' => $tmpPath,
         ]);
 
         return $this->save($attachment) ? $attachment : false;
