@@ -2,6 +2,7 @@
 
 namespace Uskur\Attachments\Model\Table;
 
+use Cake\Core\Configure;
 use Uskur\Attachments\Model\Entity\Attachment;
 use ArrayObject;
 use Cake\ORM\Entity;
@@ -21,6 +22,9 @@ use Cake\Event\Event;
  */
 class AttachmentsTable extends Table
 {
+
+    private $s3client = false;
+    private $s3bucket = false;
 
     /**
      * Initialize method
@@ -55,6 +59,22 @@ class AttachmentsTable extends Table
             'conditions' => ['SubAttachments.model' => 'Attachments'],
             'dependent' => true,
         ]);
+
+        if (Configure::read('Attachment.s3-endpoint')) {
+            $config =
+                [
+                    'version' => 'latest',
+                    'region' => Configure::read('Attachment.s3-region'),
+                    'endpoint' => Configure::read('Attachment.s3-endpoint'),
+                    'credentials' =>
+                        [
+                            'key' => Configure::read('Attachment.s3-key'),
+                            'secret' => Configure::read('Attachment.s3-secret'),
+                        ],
+                ];
+            $this->s3client = new \Aws\S3\S3Client($config);
+            $this->s3bucket = Configure::read('Attachment.s3-bucket');
+        }
     }
 
     /**
@@ -205,6 +225,17 @@ class AttachmentsTable extends Table
                     throw new \Exception("File {$attachment->tmpPath} could not be copied to {$attachment->path}");
                 }
             }
+            if ($this->s3bucket !== false) {
+                try {
+                    $result = $this->s3client->putObject([
+                        'Bucket' => $this->s3bucket,
+                        'Key' => $attachment->s3_path,
+                        'SourceFile' => $attachment->path,
+                    ]);
+                } catch (\Exception $e) {
+                    throw new \Exception("File {$attachment->tmpPath} could not be moved to S3 bucket");
+                }
+            }
             $attachment->tmpPath = null;
         }
     }
@@ -212,9 +243,16 @@ class AttachmentsTable extends Table
     public function afterDelete(Event $event, Attachment $attachment, \ArrayObject $options)
     {
         if (file_exists($attachment->get('path'))) {
-            $otherExisting = $this->find('all', ['conditions' => ['Attachments.md5' => $attachment->md5]])->count();
+            $otherExisting = $this->find()->where(['Attachments.md5' => $attachment->md5])->count();
             if ($otherExisting == 0) {
-                unlink($attachment->get('path'));
+                if ($this->s3bucket !== false) {
+                    $this->s3client->deleteObject([
+                        'Bucket' => $this->s3bucket,
+                        'Key' => $attachment->s3_path,
+                    ]);
+                } else {
+                    unlink($attachment->get('path'));
+                }
             }
         }
     }
@@ -255,5 +293,31 @@ class AttachmentsTable extends Table
         ]);
 
         return $this->save($attachment) ? $attachment : false;
+    }
+
+    public function moveFilesToS3($limit = 100)
+    {
+        $moved = 0;
+        $attachments = $this->find();
+        foreach ($attachments as $attachment) {
+            if($moved >= $limit) {
+                break;
+            }
+            if ($attachment->path && file_exists($attachment->path)) {
+                if ($this->s3bucket !== false && !$this->s3client->objectExists($this->s3bucket, $attachment->s3_path)) {
+                    try {
+                        $result = $this->s3client->putObject([
+                            'Bucket' => $this->s3bucket,
+                            'Key' => $attachment->s3_path,
+                            'SourceFile' => $attachment->path,
+                        ]);
+                    } catch (\Exception $e) {
+                        throw new \Exception("File {$attachment->tmpPath} could not be moved to S3 bucket");
+                    }
+                    $moved++;
+                }
+                $attachment->tmpPath = null;
+            }
+        }
     }
 }

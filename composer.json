@@ -6,7 +6,8 @@
         "php": ">=5.6",
         "cakephp/cakephp": ">=3.4 <4.0.0",
         "admad/cakephp-sequence": "^2.0",
-        "gumlet/php-image-resize": "^1.9"
+        "gumlet/php-image-resize": "^1.9",
+        "aws/aws-sdk-php": "^3.314"
     },
     "require-dev": {
         "phpunit/phpunit": "*"
