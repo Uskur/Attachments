@@ -297,6 +297,9 @@ class AttachmentsTable extends Table
 
     public function moveFilesToS3($limit = 100)
     {
+        if($this->s3bucket == false) {
+            throw new \Exception("S3 bucket not configured");
+        }
         $moved = 0;
         $attachments = $this->find();
         foreach ($attachments as $attachment) {
@@ -304,7 +307,7 @@ class AttachmentsTable extends Table
                 break;
             }
             if ($attachment->path && file_exists($attachment->path)) {
-                if ($this->s3bucket !== false && !$this->s3client->objectExists($this->s3bucket, $attachment->s3_path)) {
+                if (!$this->s3client->doesObjectExistV2($this->s3bucket, $attachment->s3_path)) {
                     try {
                         $result = $this->s3client->putObject([
                             'Bucket' => $this->s3bucket,
@@ -312,11 +315,10 @@ class AttachmentsTable extends Table
                             'SourceFile' => $attachment->path,
                         ]);
                     } catch (\Exception $e) {
-                        throw new \Exception("File {$attachment->tmpPath} could not be moved to S3 bucket");
+                        throw new \Exception("File {$attachment->path} could not be moved to S3 bucket");
                     }
                     $moved++;
                 }
-                $attachment->tmpPath = null;
             }
         }
     }
