@@ -58,7 +58,7 @@ class Attachment extends Entity
             throw new \Exception("Folder {$targetDir} could not be created.");
         }
 
-        if (!file_exists($filePath) && Configure::read('Attachment.s3-endpoint')) {
+        if (!file_exists($filePath) && Configure::read('Attachment.s3-endpoint') && is_null($this->tmpPath)) {
             $config =
                 [
                     'version' => 'latest',
