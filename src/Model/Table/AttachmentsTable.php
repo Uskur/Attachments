@@ -216,7 +216,7 @@ class AttachmentsTable extends Table
     {
         if ($attachment->tmpPath) {
             $path = $attachment->get('path');
-            if (is_uploaded_file($attachment->tmpPath)) {
+            if (is_uploaded_file($attachment->tmpPath) && file_exists($attachment->tmpPath)) {
                 if (!move_uploaded_file($attachment->tmpPath, $path)) {
                     throw new \Exception("Temporary file {$attachment->tmpPath} could not be moved to {$attachment->path}");
                 }
