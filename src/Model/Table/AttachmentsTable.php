@@ -250,7 +250,8 @@ class AttachmentsTable extends Table
                         'Bucket' => $this->s3bucket,
                         'Key' => $attachment->s3_path,
                     ]);
-                } else {
+                }
+                if (file_exists($attachment->get('path'))) {
                     unlink($attachment->get('path'));
                 }
             }
