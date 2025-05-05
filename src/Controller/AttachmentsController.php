@@ -115,6 +115,37 @@ class AttachmentsController extends AppController
         $options = [];
         foreach ($validOptions as $option) {
             if ($this->request->getQuery($option)) {
+                //validate quality
+                if ($option == 'q' && (
+                    !is_numeric($this->request->getQuery($option)) ||
+                    $this->request->getQuery($option) > 100) ||
+                    $this->request->getQuery($option) < 0
+                ) {
+                    throw new \Exception("Invalid quality parameter.");
+                }
+                //validate height and width
+                if (($option == 'w' || $option == 'h') && (
+                    !is_numeric($this->request->getQuery($option)) ||
+                    $this->request->getQuery($option) < 0
+                )) {
+                    throw new \Exception("Invalid height/width parameter.");
+                }
+                //validate crop and enlarge
+                if (($option == 'c' || $option == 'e') && (
+                        $this->request->getQuery($option) != 0 &&
+                        $this->request->getQuery($option) != 1
+                    )) {
+                    throw new \Exception("Invalid crop/enlarge parameter.");
+                }
+                //validate mode
+                if ($option == 'm' && $this->request->getQuery($option) != 'fill') {
+                    throw new \Exception("Invalid mode parameter.");
+                }
+                //validate fill color
+                if ($option == 'fc' && !preg_match('/^[a-f0-9]{6}$/i', $this->request->getQuery($option))) {
+                    throw new \Exception("Invalid fill color parameter.");
+                }
+
                 $options[$option] = $this->request->getQuery($option);
             } //default fill color to white
             elseif ($option == 'fc') {
@@ -206,6 +237,10 @@ class AttachmentsController extends AppController
             //preserve PNG for transparency
             if ($attachment->filetype == 'image/png' && $options['type'] != IMAGETYPE_WEBP) {
                 $options['type'] = IMAGETYPE_PNG;
+                //modify quality imagejpeg to imagepng
+                if (!is_null($options['q'])) {
+                    $options['q'] = (int) round((100 - $options['q']) / 10);
+                }
             }
             $image->save($cacheFile, $options['type'], $options['q']);
         }
