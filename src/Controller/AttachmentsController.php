@@ -171,6 +171,9 @@ class AttachmentsController extends AppController
             array_keys($options)
         ));
         $cacheFile = $cacheFolder . DS . md5($id . $cacheKey);
+        if(file_exists($cacheFile)) {
+            unlink($cacheFile);
+        }
         if (!file_exists($cacheFile)) {
             if (!file_exists($cacheFolder)) {
                 mkdir($cacheFolder);
@@ -200,7 +203,7 @@ class AttachmentsController extends AppController
                 $image->save($tempImage, IMAGETYPE_JPEG);
 
                 $image = new ImageResize($imagePath);
-                $image->resize($options['w'], $options['h']);
+                $image->resize($options['w'], $options['h'], true);
                 $image->addFilter(function ($imageDesc) use ($options, $tempImage) {
                     list($r, $g, $b) = sscanf($options['fc'], "%02x%02x%02x");
                     $backgroundColor = imagecolorallocate($imageDesc, $r, $g, $b);
@@ -223,7 +226,6 @@ class AttachmentsController extends AppController
                     //delete temp image
                     unlink($tempImage);
                 });
-                $image->crop($options['w'], $options['h']);
             } elseif ($options['w'] && $options['h'] && $options['c']) {
                 $image->crop($options['w'], $options['h'], $options['e']);
             } elseif ($options['w'] && $options['h']) {
