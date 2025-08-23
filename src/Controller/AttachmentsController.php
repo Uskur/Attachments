@@ -171,9 +171,6 @@ class AttachmentsController extends AppController
             array_keys($options)
         ));
         $cacheFile = $cacheFolder . DS . md5($id . $cacheKey);
-        if(file_exists($cacheFile)) {
-            unlink($cacheFile);
-        }
         if (!file_exists($cacheFile)) {
             if (!file_exists($cacheFolder)) {
                 mkdir($cacheFolder);
