@@ -24,6 +24,7 @@ use Uskur\Attachments\Model\Entity\DetailsTrait;
  * @property string $extension
  * @property string $s3_path
  * @property array $s3_attributes
+ * @property int $sequence
  */
 class Attachment extends Entity
 {

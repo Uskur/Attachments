@@ -323,4 +323,17 @@ class AttachmentsTable extends Table
             }
         }
     }
+
+    public function copyAttachment($id, $entity)
+    {
+        $currentAttachment = $this->get($id);
+        $newAttachmentData = $currentAttachment->toArray();
+        unset($newAttachmentData['id']);
+        unset($newAttachmentData['created']);
+        unset($newAttachmentData['sequence']);
+        $newAttachmentData['model'] = $entity->getSource();
+        $newAttachmentData['foreign_key'] = $entity->id;
+        $newAttachment = $this->newEntity($newAttachmentData);
+        return $this->save($newAttachment) ? $newAttachment : false;
+    }
 }
