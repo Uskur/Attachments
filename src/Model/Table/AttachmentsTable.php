@@ -305,13 +305,13 @@ class AttachmentsTable extends Table
      */
     public function moveFilesToS3($limit = 100)
     {
-        if($this->s3bucket == false) {
+        if ($this->s3bucket == false) {
             throw new \Exception("S3 bucket not configured");
         }
         $moved = 0;
         $attachments = $this->find();
         foreach ($attachments as $attachment) {
-            if($moved >= $limit) {
+            if ($moved >= $limit) {
                 break;
             }
             if ($attachment->path && file_exists($attachment->path)) {
@@ -331,6 +331,13 @@ class AttachmentsTable extends Table
         }
     }
 
+    /**
+     * Copies an attachment to a new entity.
+     *
+     * @param string $id Attachment ID
+     * @param \Cake\Datasource\EntityInterface $entity The target entity
+     * @return bool|\Uskur\Attachments\Model\Entity\Attachment
+     */
     public function copyAttachment($id, $entity)
     {
         $currentAttachment = $this->get($id);
