@@ -296,6 +296,13 @@ class AttachmentsTable extends Table
         return $this->save($attachment) ? $attachment : false;
     }
 
+    /**
+     * Move files to S3 storage.
+     *
+     * @param int $limit The maximum number of files to move.
+     * @return void
+     * @throws \Exception If the S3 bucket is not configured or a file cannot be moved.
+     */
     public function moveFilesToS3($limit = 100)
     {
         if($this->s3bucket == false) {
