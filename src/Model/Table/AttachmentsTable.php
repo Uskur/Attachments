@@ -23,8 +23,8 @@ use Cake\Event\Event;
 class AttachmentsTable extends Table
 {
 
-    public $s3client = false;
-    public $s3bucket = false;
+    protected $s3client = false;
+    protected $s3bucket = false;
 
     /**
      * Initialize method
