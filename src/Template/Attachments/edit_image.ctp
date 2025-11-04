@@ -21,7 +21,7 @@ $this->start('context-menu'); ?>
 
         <div class="btn-group" role="group" aria-label="Aspect Ratios">
             <button type="button" class="aspectRatio btn btn-secondary" data-ratio="4/3">4x3</button>
-            <button type="button" class="aspectRatio btn btn-secondary" data-ratio="4/3">3x4</button>
+            <button type="button" class="aspectRatio btn btn-secondary" data-ratio="3/4">3x4</button>
             <button type="button" class="aspectRatio btn btn-secondary active" data-ratio="16/9">16x9</button>
             <button type="button" class="aspectRatio btn btn-secondary" data-ratio="21/9">21x9</button>
             <button type="button" class="aspectRatio btn btn-secondary" data-ratio="1/1">1x1</button>
