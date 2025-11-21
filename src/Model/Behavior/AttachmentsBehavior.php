@@ -189,7 +189,7 @@ class AttachmentsBehavior extends Behavior
             if ($existingTag === $tag) {
                 unset($attachmentWithExclusiveTag->tags[$key]);
                 $attachmentWithExclusiveTag->tags = array_values($attachmentWithExclusiveTag->tags);
-                $attachmentWithExclusiveTag->dirty('tags', true);
+                $attachmentWithExclusiveTag->setDirty('tags');
                 break;
             }
         }
