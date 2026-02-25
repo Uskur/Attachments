@@ -4,7 +4,8 @@ use Cake\Routing\Router;
 use Cake\Routing\Route\DashedRoute;
 Router::extensions(['json']);
 
-Router::plugin(
+$routes = Router::createRouteBuilder('/');
+$routes->plugin(
     'Uskur/Attachments',
     ['path' => '/attachments'],
     function (RouteBuilder $routes) {
@@ -12,7 +13,7 @@ Router::plugin(
     }
 );
 
-Router::plugin('Uskur/Attachments', function ($routes) {
+$routes->plugin('Uskur/Attachments', function (RouteBuilder $routes) {
     // Routes connected here are prefixed with '/debugger' and
     // have the plugin route element set to 'DebugKit'.
     $routes->connect('/file/*', ['plugin' => 'Uskur/Attachments', 'controller' => 'Attachments', 'action' => 'file']);
