@@ -336,8 +336,8 @@ $(function () {
         <div class="modal-body">
         
             <?php
-                echo $this->Form->input('name',['id'=>'new-name']);
-                echo $this->Form->input('foreign_key',['value'=>$fk,'type'=>'hidden']);
+                echo $this->Form->control('name', ['id' => 'new-name']);
+                echo $this->Form->hidden('foreign_key', ['value' => $fk]);
             ?>
         
         </div>
@@ -361,8 +361,8 @@ $(function () {
         <div class="modal-body">
         
             <?php
-                echo $this->Form->input('id',['id'=>'rename-id','type'=>'hidden']);
-                echo $this->Form->input('name',['id'=>'rename-name']);
+                echo $this->Form->hidden('id', ['id' => 'rename-id']);
+                echo $this->Form->control('name', ['id' => 'rename-name']);
             ?>
         
         </div>
@@ -386,9 +386,9 @@ $(function () {
         <div class="modal-body">
         
             <?php
-                echo $this->Form->input('id',['id'=>'import-id','type'=>'hidden']);
-                echo $this->Form->input('source_type',['id'=>'import-source-type','options'=>['local'=>__d('Uskur/WebpageManager','Local')]]);
-                echo $this->Form->input('source',['id'=>'import-source']);
+                echo $this->Form->hidden('id', ['id' => 'import-id']);
+                echo $this->Form->control('source_type', ['id' => 'import-source-type', 'options' => ['local' => __d('Uskur/WebpageManager', 'Local')]]);
+                echo $this->Form->control('source', ['id' => 'import-source']);
             ?>
         
         </div>
@@ -412,10 +412,10 @@ $(function () {
         <div class="modal-body">
         <p><strong>File Name:</strong> <span id="attribute-name"></span></p>
             <?php
-                echo $this->Form->input('id',['id'=>'attribute-id','type'=>'hidden']);
-                echo $this->Form->input('title',['id'=>'attribute-title']);
-                echo $this->Form->input('description',['id'=>'attribute-description','type'=>'textarea']);
-                echo $this->Form->input('link',['id'=>'attribute-link']);
+                echo $this->Form->hidden('id', ['id' => 'attribute-id']);
+                echo $this->Form->control('title', ['id' => 'attribute-title']);
+                echo $this->Form->control('description', ['id' => 'attribute-description', 'type' => 'textarea']);
+                echo $this->Form->control('link', ['id' => 'attribute-link']);
             ?>
         
         </div>

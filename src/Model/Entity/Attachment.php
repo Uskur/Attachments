@@ -8,7 +8,6 @@ use Cake\I18n\Number;
 use Cake\Core\Configure;
 use Laminas\Diactoros\UploadedFile;
 use SplFileInfo;
-use Uskur\Attachments\Model\Entity\DetailsTrait;
 
 /**
  * Attachment Entity.
@@ -71,5 +70,25 @@ class Attachment extends Entity
     {
         $pathinfo = pathinfo($this->filename);
         return $pathinfo['extension'];
+    }
+
+    protected function _getDetailsArray(): array
+    {
+        $details = $this->details ?? [];
+        if (is_array($details)) {
+            return $details;
+        }
+        if (!is_string($details) || $details === '') {
+            return [];
+        }
+
+        $decoded = json_decode($details, true);
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    public function getDetail(string $key)
+    {
+        $details = $this->details_array;
+        return $details[$key] ?? null;
     }
 }
