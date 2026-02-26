@@ -115,6 +115,37 @@ class AttachmentsController extends AppController
         $options = [];
         foreach ($validOptions as $option) {
             if ($this->request->getQuery($option)) {
+                //validate quality
+                if ($option == 'q' && (
+                    !is_numeric($this->request->getQuery($option)) ||
+                    $this->request->getQuery($option) > 100) ||
+                    $this->request->getQuery($option) < 0
+                ) {
+                    throw new \Exception("Invalid quality parameter.");
+                }
+                //validate height and width
+                if (($option == 'w' || $option == 'h') && (
+                    !is_numeric($this->request->getQuery($option)) ||
+                    $this->request->getQuery($option) < 0
+                )) {
+                    throw new \Exception("Invalid height/width parameter.");
+                }
+                //validate crop and enlarge
+                if (($option == 'c' || $option == 'e') && (
+                        $this->request->getQuery($option) != 0 &&
+                        $this->request->getQuery($option) != 1
+                    )) {
+                    throw new \Exception("Invalid crop/enlarge parameter.");
+                }
+                //validate mode
+                if ($option == 'm' && $this->request->getQuery($option) != 'fill') {
+                    throw new \Exception("Invalid mode parameter.");
+                }
+                //validate fill color
+                if ($option == 'fc' && !preg_match('/^[a-f0-9]{6}$/i', $this->request->getQuery($option))) {
+                    throw new \Exception("Invalid fill color parameter.");
+                }
+
                 $options[$option] = $this->request->getQuery($option);
             } //default fill color to white
             elseif ($option == 'fc') {
@@ -140,7 +171,6 @@ class AttachmentsController extends AppController
             array_keys($options)
         ));
         $cacheFile = $cacheFolder . DS . md5($id . $cacheKey);
-
         if (!file_exists($cacheFile)) {
             if (!file_exists($cacheFolder)) {
                 mkdir($cacheFolder);
@@ -155,7 +185,11 @@ class AttachmentsController extends AppController
             if ($attachment->filetype === 'application/pdf') {
                 $imagePath = "/tmp/" . uniqid();
                 $imagick = new \Imagick("{$attachment->path}[0]");
+                $imagick->setResolution(300, 300);
+                $imagick->setBackgroundColor('white');
                 $imagick->setImageFormat('jpg');
+                $imagick->mergeImageLayers(\Imagick::LAYERMETHOD_FLATTEN);
+                $imagick->setImageAlphaChannel(\Imagick::ALPHACHANNEL_REMOVE);
                 file_put_contents($imagePath, $imagick);
             }
             $image = new ImageResize($imagePath);
@@ -166,7 +200,7 @@ class AttachmentsController extends AppController
                 $image->save($tempImage, IMAGETYPE_JPEG);
 
                 $image = new ImageResize($imagePath);
-                $image->resize($options['w'], $options['h']);
+                $image->resize($options['w'], $options['h'], true);
                 $image->addFilter(function ($imageDesc) use ($options, $tempImage) {
                     list($r, $g, $b) = sscanf($options['fc'], "%02x%02x%02x");
                     $backgroundColor = imagecolorallocate($imageDesc, $r, $g, $b);
@@ -202,6 +236,10 @@ class AttachmentsController extends AppController
             //preserve PNG for transparency
             if ($attachment->filetype == 'image/png' && $options['type'] != IMAGETYPE_WEBP) {
                 $options['type'] = IMAGETYPE_PNG;
+                //modify quality imagejpeg to imagepng
+                if (!is_null($options['q'])) {
+                    $options['q'] = (int) round((100 - $options['q']) / 10);
+                }
             }
             $image->save($cacheFile, $options['type'], $options['q']);
         }
@@ -211,10 +249,17 @@ class AttachmentsController extends AppController
         $file = new File($cacheFile);
         $response = $this->response->withFile($cacheFile,
             ['download' => false, 'name' => (isset($attachment) ? $attachment->filename : null)])
+            ->withVary('Accept')
             ->withType($file->mime())
-            ->withCache('-1 minute', '+1 month')
-            ->withExpires('+1 month')
+            ->withCache('-1 minute', '+6 month')
+            ->withExpires('+6 month')
+            ->withMustRevalidate(false)
             ->withModified($file->lastChange());
+
+        if ($options['type'] == IMAGETYPE_WEBP) {
+            $response = $response->withSharable(false);
+        }
+
         if ($response->checkNotModified($this->request)) {
             return $response;
         }
@@ -228,8 +273,21 @@ class AttachmentsController extends AppController
         if (!file_exists($attachment->path)) {
             throw new \Exception("File {$attachment->path} cannot be read.");
         }
-        $response = $this->response->withType($attachment->filetype)
-            ->withFile($attachment->path, ['download' => false, 'name' => $attachment->filename]);
+        $file = new File($attachment->filetype);
+
+        $response = $this->response->withFile($attachment->path,
+            ['download' => false, 'name' => $attachment->filename])
+            ->withType($attachment->filetype)
+            ->withCache('-1 minute', '+6 month')
+            ->withExpires('+6 month')
+            ->withMustRevalidate(false)
+            ->withModified($file->lastChange())
+            ->withSharable(true);
+
+        if ($response->checkNotModified($this->request)) {
+            return $response;
+        }
+
         return $response;
     }
 
@@ -239,8 +297,20 @@ class AttachmentsController extends AppController
         if (!file_exists($attachment->path)) {
             throw new \Exception("File {$attachment->path} cannot be read.");
         }
-        $response = $this->response->withType($attachment->filetype)
-            ->withFile($attachment->path, ['download' => true, 'name' => $attachment->filename]);
+        $file = new File($attachment->filetype);
+
+        $response = $this->response->withFile($attachment->path,
+            ['download' => true, 'name' => $attachment->filename])
+            ->withType($attachment->filetype)
+            ->withCache('-1 minute', '+6 month')
+            ->withExpires('+6 month')
+            ->withMustRevalidate(false)
+            ->withModified($file->lastChange());
+
+        if ($response->checkNotModified($this->request)) {
+            return $response;
+        }
+
         return $response;
     }
 
@@ -317,13 +387,13 @@ class AttachmentsController extends AppController
         ob_get_clean();
         header("Content-Type: video/mp4");
         header("Cache-Control: max-age=311040000, public");
-        header("Expires: ".gmdate('D, d M Y H:i:s', time()+311040000) . ' GMT');
-        header("Last-Modified: ".gmdate('D, d M Y H:i:s', @filemtime($attachment->path)) . ' GMT' );
+        header("Expires: " . gmdate('D, d M Y H:i:s', time() + 311040000) . ' GMT');
+        header("Last-Modified: " . gmdate('D, d M Y H:i:s', @filemtime($attachment->path)) . ' GMT');
         $this->start = 0;
-        $this->size  = filesize($attachment->path);
-        $this->end   = $this->size - 1;
+        $this->size = filesize($attachment->path);
+        $this->end = $this->size - 1;
 
-        header("Accept-Ranges: 0-".$this->end);
+        header("Accept-Ranges: 0-" . $this->end);
         //set header
         if (isset($_SERVER['HTTP_RANGE'])) {
 
@@ -338,7 +408,7 @@ class AttachmentsController extends AppController
             }
             if ($range == '-') {
                 $c_start = $this->size - substr($range, 1);
-            }else{
+            } else {
                 $range = explode('-', $range);
                 $c_start = $range[0];
                 $c_end = (isset($range[1]) && is_numeric($range[1])) ? $range[1] : $c_end;
@@ -354,19 +424,17 @@ class AttachmentsController extends AppController
             $length = $this->end - $this->start + 1;
             fseek($this->stream, $this->start);
             header('HTTP/1.1 206 Partial Content');
-            header("Content-Length: ".$length);
-            header("Content-Range: bytes $this->start-$this->end/".$this->size);
-        }
-        else
-        {
-            header("Content-Length: ".$this->size);
+            header("Content-Length: " . $length);
+            header("Content-Range: bytes $this->start-$this->end/" . $this->size);
+        } else {
+            header("Content-Length: " . $this->size);
         }
         //stream
         $i = $this->start;
         set_time_limit(0);
-        while(!feof($this->stream) && $i <= $this->end) {
+        while (!feof($this->stream) && $i <= $this->end) {
             $bytesToRead = $this->buffer;
-            if(($i+$bytesToRead) > $this->end) {
+            if (($i + $bytesToRead) > $this->end) {
                 $bytesToRead = $this->end - $i + 1;
             }
             $data = @stream_get_contents($this->stream, $bytesToRead, intval($i));
@@ -392,14 +460,13 @@ class AttachmentsController extends AppController
             if ($this->Attachments->replaceFile($id, $tempPath)) {
                 $this->Flash->success(__('Image modified.'));
                 $redirectTo = $this->getRequest()->getSession()->consume('Attachment.redirectAfter');
-                if($redirectTo) {
+                if ($redirectTo) {
                     return $this->redirect($redirectTo);
                 }
             } else {
                 $this->Flash->error(__('Image could not be saved. Please, try again.'));
             }
-        }
-        else {
+        } else {
             $this->getRequest()->getSession()->write('Attachment.redirectAfter', $this->referer());
         }
         $this->set('image', $image);

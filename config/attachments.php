@@ -13,7 +13,12 @@ use Cake\Core\Configure;
 
 $config = [
     'Attachment' => [
-        'path' => '/tmp/filestorage'
+        'path' => '/tmp/filestorage',
+        's3-endpoint' => false,
+        's3-region' => '',
+        's3-key' => '',
+        's3-secret' => '',
+        's3-bucket' => '',
     ]
 ];
 
