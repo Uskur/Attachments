@@ -273,7 +273,7 @@ class AttachmentsController extends AppController
         if (!file_exists($attachment->path)) {
             throw new \Exception("File {$attachment->path} cannot be read.");
         }
-        $file = new File($attachment->filetype);
+        $file = new File($attachment->path);
 
         $response = $this->response->withFile($attachment->path,
             ['download' => false, 'name' => $attachment->filename])
@@ -297,7 +297,7 @@ class AttachmentsController extends AppController
         if (!file_exists($attachment->path)) {
             throw new \Exception("File {$attachment->path} cannot be read.");
         }
-        $file = new File($attachment->filetype);
+        $file = new File($attachment->path);
 
         $response = $this->response->withFile($attachment->path,
             ['download' => true, 'name' => $attachment->filename])
