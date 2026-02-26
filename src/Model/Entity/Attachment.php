@@ -38,7 +38,7 @@ class Attachment extends Entity
 
     protected function _getPath()
     {
-        $md5 = $this->_properties['md5'] ?? null;
+        $md5 = $this->md5 ?? null;
         if (!$md5) {
             return false;
         }
@@ -52,6 +52,7 @@ class Attachment extends Entity
         }
 
         if (!file_exists($filePath) && Configure::read('Attachment.s3-endpoint') && empty($this->tmpPath)) {
+
             $config = [
                 'version' => 'latest',
                 'region' => Configure::read('Attachment.s3-region'),
@@ -95,7 +96,7 @@ class Attachment extends Entity
 
     protected function _getS3Path()
     {
-        $md5 = $this->_properties['md5'] ?? null;
+        $md5 = $this->md5 ?? null;
         if (!$md5) {
             return null;
         }

@@ -260,8 +260,8 @@ class AttachmentsController extends AppController
             $response = $response->withSharable(false);
         }
 
-        if ($response->checkNotModified($this->request)) {
-            return $response;
+        if ($response->isNotModified($this->request)) {
+            return $response->withNotModified();
         }
 
         return $response;
@@ -273,7 +273,7 @@ class AttachmentsController extends AppController
         if (!file_exists($attachment->path)) {
             throw new \Exception("File {$attachment->path} cannot be read.");
         }
-        $file = new File($attachment->filetype);
+        $file = new File($attachment->path);
 
         $response = $this->response->withFile($attachment->path,
             ['download' => false, 'name' => $attachment->filename])
@@ -284,8 +284,8 @@ class AttachmentsController extends AppController
             ->withModified($file->lastChange())
             ->withSharable(true);
 
-        if ($response->checkNotModified($this->request)) {
-            return $response;
+        if ($response->isNotModified($this->request)) {
+            return $response->withNotModified();
         }
 
         return $response;
@@ -297,7 +297,7 @@ class AttachmentsController extends AppController
         if (!file_exists($attachment->path)) {
             throw new \Exception("File {$attachment->path} cannot be read.");
         }
-        $file = new File($attachment->filetype);
+        $file = new File($attachment->path);
 
         $response = $this->response->withFile($attachment->path,
             ['download' => true, 'name' => $attachment->filename])
@@ -307,8 +307,8 @@ class AttachmentsController extends AppController
             ->withMustRevalidate(false)
             ->withModified($file->lastChange());
 
-        if ($response->checkNotModified($this->request)) {
-            return $response;
+        if ($response->isNotModified($this->request)) {
+            return $response->withNotModified();
         }
 
         return $response;
