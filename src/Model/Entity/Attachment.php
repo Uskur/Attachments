@@ -155,4 +155,13 @@ class Attachment extends Entity
         $details = $this->details_array;
         return $details[$key] ?? null;
     }
+
+    public function setDetail(string $key, $value): self
+    {
+        $details = $this->details_array;
+        $details[$key] = $value;
+        $this->details = $details;
+
+        return $this;
+    }
 }
