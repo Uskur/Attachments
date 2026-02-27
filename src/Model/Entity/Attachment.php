@@ -160,7 +160,7 @@ class Attachment extends Entity
     {
         $details = $this->details_array;
         $details[$key] = $value;
-        $this->details = $details;
+        $this->details = json_encode($details);
 
         return $this;
     }
