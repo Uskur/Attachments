@@ -22,7 +22,7 @@ class AttachmentsController extends AppController
      */
     public function add($model = null, $fk = null)
     {
-        $attachment = $this->Attachments->newEntity();
+        $attachment = $this->Attachments->newEmptyEntity();
         if ($this->request->is('post')) {
             if (is_null($fk)) {
                 $fk = $this->request->getData('fk');
