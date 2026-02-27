@@ -180,13 +180,13 @@ function deleteFile(id){
 }
 
 function returnCkImage(id){
-    url = '<?php echo $this->Url->build(['plugin'=>'Uskur/Attachments','controller'=>'Attachments','action'=>'image'], (bool)$this->request->getQuery('full')); ?>/'+id;
+    url = '<?php echo $this->Url->build(['plugin'=>'Uskur/Attachments','controller'=>'Attachments','action'=>'image'], ['fullBase' => (bool)$this->request->getQuery('full')]); ?>/'+id;
 	window.opener.CKEDITOR.tools.callFunction( ckeditor, url );
 	window.close();
 }
 
 function returnCkFile(id, name){
-    url = '<?php echo $this->Url->build(['plugin'=>'Uskur/Attachments','controller'=>'Attachments','action'=>'file'], (bool)$this->request->getQuery('full')); ?>/'+id+'/'+name;
+    url = '<?php echo $this->Url->build(['plugin'=>'Uskur/Attachments','controller'=>'Attachments','action'=>'file'], ['fullBase' => (bool)$this->request->getQuery('full')]); ?>/'+id+'/'+name;
 	window.opener.CKEDITOR.tools.callFunction( ckeditor, url );
 	window.close();
 }
