@@ -62,8 +62,8 @@ $this->start('context-menu'); ?>
     <td class="text-right">size</td>
     <td class="text-right">created</td>
     <td>
-        <?php if(isset($this->request->query['CKEditorFuncNum'])): ?>
-        <?php if(isset($this->request->query['filter']) && $this->request->query['filter'] == 'image'):?>
+        <?php if ($this->request->getQuery('CKEditorFuncNum') !== null): ?>
+        <?php if ($this->request->getQuery('filter') === 'image'): ?>
             <a href="javascript:void(0)" data-id="fileId" data-name="fileName" class="selectImage btn btn-icon btn-success btn-outline btn-sm" title="Select"><i class="icon fa-image" aria-hidden="true"></i></a>
         <?php else: ?>
             <a href="javascript:void(0)" data-id="fileId" data-name="fileName" class="selectFile btn btn-icon btn-success btn-outline btn-sm" title="Select"><i class="icon fa-chain" aria-hidden="true"></i></a>
@@ -84,8 +84,8 @@ $this->start('context-menu'); ?>
     <td class="text-right">size</td>
     <td class="text-center">created</td>
     <td>
-        <?php if(isset($this->request->query['CKEditorFuncNum'])): ?>
-        <?php if(isset($this->request->query['filter']) && $this->request->query['filter'] == 'image'):?>
+        <?php if ($this->request->getQuery('CKEditorFuncNum') !== null): ?>
+        <?php if ($this->request->getQuery('filter') === 'image'): ?>
             <a href="javascript:void(0)" data-id="fileId" data-name="fileName" class="selectImage btn btn-icon btn-success btn-outline btn-sm" title="Select"><i class="icon fa-image" aria-hidden="true"></i></a>
         <?php else: ?>
             <a href="javascript:void(0)" data-id="fileId" data-name="fileName" class="selectFile btn btn-icon btn-success btn-outline btn-sm" title="Select"><i class="icon fa-chain" aria-hidden="true"></i></a>
@@ -101,7 +101,7 @@ $this->start('context-menu'); ?>
 <?php $this->append('script'); ?>
 <script type="text/javascript">
 var activeFolder = null;
-var ckeditor = <?= isset($this->request->query['CKEditorFuncNum'])?$this->request->query['CKEditorFuncNum']:'null' ?>;
+var ckeditor = <?= $this->request->getQuery('CKEditorFuncNum') !== null ? (int)$this->request->getQuery('CKEditorFuncNum') : 'null' ?>;
 function printFolders() {
 	$('#folderList').jstree().settings.core.data = $.parseJSON(folders);
 	$('#folderList').jstree().refresh();
@@ -180,13 +180,13 @@ function deleteFile(id){
 }
 
 function returnCkImage(id){
-    url = '<?php echo $this->Url->build(['plugin'=>'Uskur/Attachments','controller'=>'Attachments','action'=>'image'],$this->request->query('full')); ?>/'+id;
+    url = '<?php echo $this->Url->build(['plugin'=>'Uskur/Attachments','controller'=>'Attachments','action'=>'image'], (bool)$this->request->getQuery('full')); ?>/'+id;
 	window.opener.CKEDITOR.tools.callFunction( ckeditor, url );
 	window.close();
 }
 
 function returnCkFile(id, name){
-    url = '<?php echo $this->Url->build(['plugin'=>'Uskur/Attachments','controller'=>'Attachments','action'=>'file'],$this->request->query('full')); ?>/'+id+'/'+name;
+    url = '<?php echo $this->Url->build(['plugin'=>'Uskur/Attachments','controller'=>'Attachments','action'=>'file'], (bool)$this->request->getQuery('full')); ?>/'+id+'/'+name;
 	window.opener.CKEDITOR.tools.callFunction( ckeditor, url );
 	window.close();
 }
