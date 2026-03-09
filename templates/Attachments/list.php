@@ -18,16 +18,16 @@ $this->assign('title', $pageTitle);
 $this->Breadcrumbs->add($pageTitle, ['action' => 'index']);
 $this->start('context-menu'); ?>
 	<div id="folderButtons" class="btn-group" role="group" aria-label="Actions">
-		
-    
+
+
     <span class="btn btn-success btn-icon btn-outline btn-sm fileinput-button">
         <i class="icon fa-upload"></i>
         <span>Upload</span>
         <!-- The file input field used as target for the file upload widget -->
         <input id="fileupload" type="file" name="files[]" multiple>
     </span>
-    
-        
+
+
     </div>
 <?php $this->end(); ?>
 <div id="progress" class="progress progress-xs"><div class="progress-bar progress-bar-success"></div></div>
@@ -50,7 +50,7 @@ $this->start('context-menu'); ?>
         		</thead>
         		<tbody id="fileList" class="sortable"></tbody>
         	</table>
-          
+
         </div>
       </div>
 
@@ -73,7 +73,7 @@ $this->start('context-menu'); ?>
         <a data-id="fileId" href="javascript:void(0)" class="editFileAttribute btn btn-icon btn-primary btn-outline btn-sm"><i class="icon fa-pencil" aria-hidden="true"></i></a>
         <a data-id="fileId" href="javascript:void(0)" class="deleteFile btn btn-icon btn-danger btn-outline btn-sm"><i class="icon fa-trash" aria-hidden="true"></i></a>
     </td>
-</tr> 
+</tr>
 </script>
 
 <script type="text/template" id="fileTemplate">
@@ -95,9 +95,9 @@ $this->start('context-menu'); ?>
         <a data-id="fileId" href="javascript:void(0)" class="editFileAttribute btn btn-icon btn-primary btn-outline btn-sm"><i class="icon fa-pencil" aria-hidden="true"></i></a>
         <a data-id="fileId" href="javascript:void(0)" class="deleteFile btn btn-icon btn-danger btn-outline btn-sm"><i class="icon fa-trash" aria-hidden="true"></i></a>
     </td>
-</tr> 
+</tr>
 </script>
-    
+
 <?php $this->append('script'); ?>
 <script type="text/javascript">
 var activeFolder = null;
@@ -157,7 +157,7 @@ function printFiles(data){
 }
 
 function printFile(file){
-	if(file.filetype.startsWith('image')){
+	if(file.filetype.startsWith('image')) {
 		template = $.trim($('#imageTemplate').html());
 	}
 	else{
@@ -191,13 +191,13 @@ function returnCkFile(id, name){
 	window.close();
 }
 
-$(function () { 
+$(function () {
 	$.ajaxSetup({
 	    headers: {
 	        'X-CSRF-TOKEN': "<?= $this->request->getParam('_csrfToken') ?>"
 	    }
 	});
-	
+
 	getFolder("<?= str_replace("/", "-", $model)."/$fk"?>");
 
     $( "#importFilesForm" ).submit(function( event ) {
@@ -242,21 +242,21 @@ $(function () {
         		else{
         			$('#attribute-title').val('');
         		}
-    
+
         		if(data['attachment']['details_array'] !== null && data['attachment']['details_array']['description'] !== null) {
         			$('#attribute-description').val(data['attachment']['details_array']['description']);
         		}
         		else{
         			$('#attribute-description').val('');
         		}
-    
+
         		if(data['attachment']['details_array'] !== null && data['attachment']['details_array']['link'] !== null) {
         			$('#attribute-link').val(data['attachment']['details_array']['link']);
         		}
         		else{
         			$('#attribute-link').val('');
-        		}	
-    	},'json');  
+        		}
+    	},'json');
     });
 
     $( "#fileAttributeForm" ).submit(function( event ) {
@@ -292,18 +292,18 @@ $(function () {
     }).prop('disabled', !$.support.fileInput)
     .parent().addClass($.support.fileInput ? undefined : 'disabled');
 
-    
-    
+
+
 });
 
 
 
 
 
-$(function () { 
+$(function () {
 
 
-	$( "tbody.sortable" ).sortable({ 
+	$( "tbody.sortable" ).sortable({
 		handle: '.handle',
 		update: function(event, ui) {
 			  ui.item.find('i.fa-bars').removeClass('fa-bars').addClass('fa-spinner fa-spin');
@@ -317,9 +317,9 @@ $(function () {
 		        }).fail(function() {
 		            alert( "Error while trying to save the new position. Please refresh page." );
 		        });
-		} 
+		}
 	});
-    
+
 });
 
 
@@ -334,18 +334,18 @@ $(function () {
         </div>
         <?= $this->Form->create($fileFolder,['id'=>'newFolderForm','url'=>['action'=>'add','_ext'=>'json']]) ?>
         <div class="modal-body">
-        
+
             <?php
                 echo $this->Form->control('name', ['id' => 'new-name']);
                 echo $this->Form->hidden('foreign_key', ['value' => $fk]);
             ?>
-        
+
         </div>
         <div class="modal-footer">
         	<?= $this->Form->button(__d('Uskur/WebpageManager','Submit')) ?>
           <a class="btn btn-sm btn-white" data-dismiss="modal" href="javascript:void(0)">Cancel</a>
         </div>
-        
+
         <?= $this->Form->end() ?>
       </div>
     </div>
@@ -359,18 +359,18 @@ $(function () {
         </div>
         <?= $this->Form->create(null,['id'=>'renameFolderForm','url'=>['action'=>'edit']]) ?>
         <div class="modal-body">
-        
+
             <?php
                 echo $this->Form->hidden('id', ['id' => 'rename-id']);
                 echo $this->Form->control('name', ['id' => 'rename-name']);
             ?>
-        
+
         </div>
         <div class="modal-footer">
         	<?= $this->Form->button(__d('Uskur/WebpageManager','Submit')) ?>
           <a class="btn btn-sm btn-white" data-dismiss="modal" href="javascript:void(0)">Cancel</a>
         </div>
-        
+
         <?= $this->Form->end() ?>
       </div>
     </div>
@@ -384,19 +384,19 @@ $(function () {
         </div>
         <?= $this->Form->create(null,['id'=>'importFilesForm','url'=>['action'=>'import']]) ?>
         <div class="modal-body">
-        
+
             <?php
                 echo $this->Form->hidden('id', ['id' => 'import-id']);
                 echo $this->Form->control('source_type', ['id' => 'import-source-type', 'options' => ['local' => __d('Uskur/WebpageManager', 'Local')]]);
                 echo $this->Form->control('source', ['id' => 'import-source']);
             ?>
-        
+
         </div>
         <div class="modal-footer">
         	<?= $this->Form->button(__d('Uskur/WebpageManager','Submit')) ?>
           <a class="btn btn-sm btn-white" data-dismiss="modal" href="javascript:void(0)">Cancel</a>
         </div>
-        
+
         <?= $this->Form->end() ?>
       </div>
     </div>
@@ -417,13 +417,13 @@ $(function () {
                 echo $this->Form->control('description', ['id' => 'attribute-description', 'type' => 'textarea']);
                 echo $this->Form->control('link', ['id' => 'attribute-link']);
             ?>
-        
+
         </div>
         <div class="modal-footer">
         	<?= $this->Form->button(__d('Uskur/WebpageManager','Submit')) ?>
           <a class="btn btn-sm btn-white" data-dismiss="modal" href="javascript:void(0)">Cancel</a>
         </div>
-        
+
         <?= $this->Form->end() ?>
       </div>
     </div>
