@@ -4,6 +4,7 @@
     "type": "cakephp-plugin",
     "require": {
         "php": ">=7.2",
+        "ext-imagick": "*",
         "cakephp/cakephp": "^4.1",
         "admad/cakephp-sequence": "^3.0",
         "gumlet/php-image-resize": "^2.0",
