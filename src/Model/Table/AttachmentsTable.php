@@ -108,12 +108,13 @@ class AttachmentsTable extends Table
      *
      * @param \Cake\Datasource\EntityInterface $entity Related entity.
      * @param mixed $upload Uploaded file object or legacy upload array.
-     * @param array $allowed_types Allowed MIME types.
+     * @param array|null $allowed_types Allowed MIME types.
      * @param array $details Extra details.
      * @return \Uskur\Attachments\Model\Entity\Attachment|false
      */
-    public function addUpload(EntityInterface $entity, $upload, array $allowed_types = [], array $details = [])
+    public function addUpload(EntityInterface $entity, $upload, ?array $allowed_types = [], array $details = [])
     {
+        $allowed_types ??= [];
         $payload = $this->normalizeUpload($upload);
         if (!$payload) {
             return false;
