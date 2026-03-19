@@ -1,11 +1,17 @@
 <?php
+declare(strict_types=1);
+
 use Migrations\AbstractMigration;
 
 class AttachmentsInitial extends AbstractMigration
 {
+    /**
+     * Create the initial attachments table.
+     *
+     * @return void
+     */
     public function up()
     {
-
         $this->table('attachments', ['id' => false, 'primary_key' => ['id']])
             ->addColumn('id', 'uuid', [
                 'default' => null,
@@ -50,6 +56,11 @@ class AttachmentsInitial extends AbstractMigration
             ->create();
     }
 
+    /**
+     * Drop the attachments table.
+     *
+     * @return void
+     */
     public function down()
     {
         $this->table('attachments')->drop()->save();

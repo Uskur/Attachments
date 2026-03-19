@@ -1,12 +1,12 @@
 <?php
+declare(strict_types=1);
 
 namespace Uskur\Attachments\Model\Table;
 
 use ArrayObject;
 use Cake\Core\Configure;
 use Cake\Datasource\EntityInterface;
-use Cake\Event\Event;
-use Cake\Filesystem\File;
+use Cake\Event\EventInterface;
 use Cake\ORM\RulesChecker;
 use Cake\ORM\Table;
 use Cake\Validation\Validator;
@@ -21,6 +21,12 @@ class AttachmentsTable extends Table
     protected $s3client = false;
     protected $s3bucket = false;
 
+    /**
+     * Initialize table config, associations, and optional S3 client.
+     *
+     * @param array $config Table config.
+     * @return void
+     */
     public function initialize(array $config): void
     {
         parent::initialize($config);
@@ -64,6 +70,12 @@ class AttachmentsTable extends Table
         }
     }
 
+    /**
+     * Default validation rules.
+     *
+     * @param \Cake\Validation\Validator $validator Validator instance.
+     * @return \Cake\Validation\Validator
+     */
     public function validationDefault(Validator $validator): Validator
     {
         $validator
@@ -80,6 +92,12 @@ class AttachmentsTable extends Table
         return $validator;
     }
 
+    /**
+     * Build application integrity rules.
+     *
+     * @param \Cake\ORM\RulesChecker $rules Rules checker.
+     * @return \Cake\ORM\RulesChecker
+     */
     public function buildRules(RulesChecker $rules): RulesChecker
     {
         return $rules;
@@ -134,6 +152,7 @@ class AttachmentsTable extends Table
         if ($existing) {
             if (!empty($details)) {
                 $existing->details = json_encode($details);
+
                 return $this->save($existing);
             }
 
@@ -143,17 +162,30 @@ class AttachmentsTable extends Table
         return $this->save($attachment);
     }
 
+    /**
+     * Save an existing file as an attachment.
+     *
+     * @param \Cake\Datasource\EntityInterface $entity Related entity.
+     * @param string $filePath Source file path.
+     * @param array $details Extra details.
+     * @return \Uskur\Attachments\Model\Entity\Attachment|false
+     */
     public function addFile($entity, $filePath, $details = [])
     {
-        $file = new File($filePath);
-        $info = $file->info();
+        $fileName = basename($filePath);
+        $fileSize = filesize($filePath);
+        $fileMime = mime_content_type($filePath);
+        $fileMd5 = md5_file($filePath);
+        if ($fileSize === false || $fileMime === false || $fileMd5 === false) {
+            throw new \Exception("File {$filePath} could not be read.");
+        }
         $attachment = $this->newEntity([
             'model' => $entity->getSource(),
             'foreign_key' => $entity->id,
-            'filename' => $info['basename'],
-            'size' => $info['filesize'],
-            'filetype' => $info['mime'],
-            'md5' => $file->md5(true),
+            'filename' => $fileName,
+            'size' => $fileSize,
+            'filetype' => $fileMime,
+            'md5' => $fileMd5,
             'tmpPath' => $filePath,
         ]);
 
@@ -176,7 +208,15 @@ class AttachmentsTable extends Table
         return $this->save($attachment) ? $attachment : false;
     }
 
-    public function afterSave(Event $event, Attachment $attachment, ArrayObject $options)
+    /**
+     * Move the uploaded file after the attachment row is saved.
+     *
+     * @param \Cake\Event\EventInterface $event Event instance.
+     * @param \Uskur\Attachments\Model\Entity\Attachment $attachment Saved attachment.
+     * @param \ArrayObject $options Save options.
+     * @return void
+     */
+    public function afterSave(EventInterface $event, Attachment $attachment, ArrayObject $options)
     {
         if ($attachment->upload instanceof UploadedFileInterface) {
             $path = $attachment->get('path');
@@ -185,6 +225,7 @@ class AttachmentsTable extends Table
                 $this->putToS3($attachment, $path);
             }
             $attachment->upload = null;
+
             return;
         }
 
@@ -208,7 +249,15 @@ class AttachmentsTable extends Table
         }
     }
 
-    public function afterDelete(Event $event, Attachment $attachment, ArrayObject $options)
+    /**
+     * Remove orphaned files after attachment deletion.
+     *
+     * @param \Cake\Event\EventInterface $event Event instance.
+     * @param \Uskur\Attachments\Model\Entity\Attachment $attachment Deleted attachment.
+     * @param \ArrayObject $options Delete options.
+     * @return void
+     */
+    public function afterDelete(EventInterface $event, Attachment $attachment, ArrayObject $options)
     {
         $path = $attachment->get('path');
         if (file_exists($path)) {
@@ -227,6 +276,13 @@ class AttachmentsTable extends Table
         }
     }
 
+    /**
+     * Fetch attachments for an article filtered by top-level MIME type.
+     *
+     * @param string $articleId Article ID.
+     * @param string $type MIME type prefix.
+     * @return \Cake\ORM\Query
+     */
     public function getAttachmentsOfArticle($articleId, $type = 'image')
     {
         return $this->find('all', [
@@ -250,20 +306,31 @@ class AttachmentsTable extends Table
         $currentAttachment = $this->get($id);
         $this->delete($currentAttachment);
 
-        $file = new File($tmpPath);
+        $fileSize = filesize($tmpPath);
+        $fileMime = mime_content_type($tmpPath);
+        $fileMd5 = md5_file($tmpPath);
+        if ($fileSize === false || $fileMime === false || $fileMd5 === false) {
+            throw new \Exception("File {$tmpPath} could not be read.");
+        }
         $attachment = $this->newEntity([
             'model' => $currentAttachment->model,
             'foreign_key' => $currentAttachment->foreign_key,
             'filename' => $currentAttachment->filename,
-            'size' => $file->size(),
-            'filetype' => $file->mime(),
-            'md5' => $file->md5(true),
+            'size' => $fileSize,
+            'filetype' => $fileMime,
+            'md5' => $fileMd5,
             'tmpPath' => $tmpPath,
         ]);
 
         return $this->save($attachment) ? $attachment : false;
     }
 
+    /**
+     * Move local attachments to S3 storage.
+     *
+     * @param int $limit Max number of files to move.
+     * @return void
+     */
     public function moveFilesToS3($limit = 100)
     {
         if ($this->s3bucket == false) {
@@ -303,6 +370,12 @@ class AttachmentsTable extends Table
         return $this->save($newAttachment) ? $newAttachment : false;
     }
 
+    /**
+     * Normalize uploaded file input from either PSR-7 or legacy arrays.
+     *
+     * @param mixed $upload Uploaded file input.
+     * @return array|null
+     */
     private function normalizeUpload($upload): ?array
     {
         if ($upload instanceof UploadedFileInterface) {
@@ -331,14 +404,19 @@ class AttachmentsTable extends Table
         }
 
         if (is_array($upload) && !empty($upload['tmp_name']) && file_exists($upload['tmp_name'])) {
-            $file = new File($upload['tmp_name']);
-            $info = $file->info();
+            $fileName = basename($upload['tmp_name']);
+            $fileSize = filesize($upload['tmp_name']);
+            $fileMime = mime_content_type($upload['tmp_name']);
+            $fileMd5 = md5_file($upload['tmp_name']);
+            if ($fileSize === false || $fileMime === false || $fileMd5 === false) {
+                throw new \Exception("File {$upload['tmp_name']} could not be read.");
+            }
 
             return [
-                'filename' => $upload['name'] ?? $info['basename'],
-                'size' => $info['filesize'],
-                'type' => $upload['type'] ?? $info['mime'],
-                'md5' => $file->md5(true),
+                'filename' => $upload['name'] ?? $fileName,
+                'size' => $fileSize,
+                'type' => $upload['type'] ?? $fileMime,
+                'md5' => $fileMd5,
                 'tmpPath' => $upload['tmp_name'],
             ];
         }
@@ -346,6 +424,13 @@ class AttachmentsTable extends Table
         return null;
     }
 
+    /**
+     * Upload a local file to S3 if object storage is configured.
+     *
+     * @param \Uskur\Attachments\Model\Entity\Attachment $attachment Attachment entity.
+     * @param string $path Local file path.
+     * @return void
+     */
     private function putToS3(Attachment $attachment, string $path): void
     {
         try {

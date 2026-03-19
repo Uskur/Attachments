@@ -7,7 +7,7 @@ $this->assign('title', $pageTitle);
 $this->Breadcrumbs->add($pageTitle, [
     'controller' => 'Attachments',
     'action' => 'editImage',
-    $image->id
+    $image->id,
 ]);
 
 $this->start('context-menu'); ?>

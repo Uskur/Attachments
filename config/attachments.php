@@ -9,7 +9,6 @@
  * @copyright Copyright 2010 - 2015, Cake Development Corporation (http://cakedc.com)
  * @license MIT License (http://www.opensource.org/licenses/mit-license.php)
  */
-use Cake\Core\Configure;
 
 $config = [
     'Attachment' => [
@@ -19,7 +18,7 @@ $config = [
         's3-key' => env('ATTACHMENT_S3_KEY', null),
         's3-secret' => env('ATTACHMENT_S3_SECRET', null),
         's3-bucket' => env('ATTACHMENT_S3_BUCKET', null),
-    ]
+    ],
 ];
 
 return $config;

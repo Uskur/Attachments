@@ -1,9 +1,9 @@
 <?php
+declare(strict_types=1);
 
 namespace Uskur\Attachments\Model\Entity;
 
 use Cake\Core\Configure;
-use Cake\Filesystem\Folder;
 use Cake\I18n\Number;
 use Cake\ORM\Entity;
 
@@ -36,6 +36,11 @@ class Attachment extends Entity
 
     protected $_virtual = ['details_array', 'readable_size', 'readable_created'];
 
+    /**
+     * Build the local filesystem path for the attachment.
+     *
+     * @return string|false
+     */
     protected function _getPath()
     {
         $md5 = $this->md5 ?? null;
@@ -46,8 +51,7 @@ class Attachment extends Entity
         $targetDir = Configure::read('Attachment.path') . DS . substr($md5, 0, 2);
         $filePath = $targetDir . DS . $md5;
 
-        $folder = new Folder();
-        if (!file_exists($filePath) && !$folder->create($targetDir)) {
+        if (!file_exists($filePath) && !is_dir($targetDir) && !mkdir($targetDir, 0775, true) && !is_dir($targetDir)) {
             throw new \Exception("Folder {$targetDir} could not be created.");
         }
 
@@ -57,7 +61,6 @@ class Attachment extends Entity
             empty($this->tmpPath) &&
             empty($this->upload)
         ) {
-
             $config = [
                 'version' => 'latest',
                 'region' => Configure::read('Attachment.s3-region'),
@@ -83,22 +86,43 @@ class Attachment extends Entity
         return $filePath;
     }
 
+    /**
+     * Human-readable file size.
+     *
+     * @return string
+     */
     protected function _getReadableSize()
     {
         return Number::toReadableSize($this->size);
     }
 
+    /**
+     * Human-readable created timestamp.
+     *
+     * @return string
+     */
     protected function _getReadableCreated()
     {
         return $this->created->format('d/m/Y H:i:s');
     }
 
+    /**
+     * File extension extracted from the original filename.
+     *
+     * @return string|null
+     */
     protected function _getExtension()
     {
         $pathinfo = pathinfo($this->filename);
+
         return $pathinfo['extension'] ?? null;
     }
 
+    /**
+     * Object storage path derived from the attachment hash.
+     *
+     * @return string|null
+     */
     protected function _getS3Path()
     {
         $md5 = $this->md5 ?? null;
@@ -109,6 +133,11 @@ class Attachment extends Entity
         return substr($md5, 0, 2) . '/' . $md5;
     }
 
+    /**
+     * Fetch object metadata from S3.
+     *
+     * @return mixed
+     */
     protected function _getS3Attributes()
     {
         if (!Configure::read('Attachment.s3-endpoint')) {
@@ -136,6 +165,11 @@ class Attachment extends Entity
         }
     }
 
+    /**
+     * Decode stored details into an array.
+     *
+     * @return array
+     */
     protected function _getDetailsArray(): array
     {
         $details = $this->details ?? [];
@@ -147,16 +181,31 @@ class Attachment extends Entity
         }
 
         $decoded = json_decode($details, true);
+
         return is_array($decoded) ? $decoded : [];
     }
 
+    /**
+     * Read a single detail entry.
+     *
+     * @param string $key Detail key.
+     * @return mixed
+     */
     public function getDetail(string $key)
     {
         $details = $this->details_array;
+
         return $details[$key] ?? null;
     }
 
-    public function setDetail(string $key, $value): self
+    /**
+     * Set a single detail entry.
+     *
+     * @param string $key Detail key.
+     * @param mixed $value Detail value.
+     * @return $this
+     */
+    public function setDetail(string $key, $value)
     {
         $details = $this->details_array;
         $details[$key] = $value;

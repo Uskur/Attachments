@@ -1,13 +1,13 @@
 <?php
+declare(strict_types=1);
+
 namespace Uskur\Attachments\Model\Behavior;
 
 use Cake\Datasource\EntityInterface;
-use Cake\Event\Event;
+use Cake\Event\EventInterface;
 use Cake\ORM\Behavior;
 use Cake\ORM\TableRegistry;
 use Psr\Http\Message\UploadedFileInterface;
-use Uskur\Attachments\Model\Entity\Attachment;
-use Uskur\Attachments\Model\Table\AttachmentsTable;
 
 /**
  * Attachments behavior
@@ -27,6 +27,12 @@ class AttachmentsBehavior extends Behavior
      */
     public $Attachments;
 
+    /**
+     * Initialize the behavior and register attachment associations.
+     *
+     * @param array $config Behavior config.
+     * @return void
+     */
     public function initialize(array $config): void
     {
         $this->Attachments = TableRegistry::getTableLocator()->get('Uskur/Attachments.Attachments');
@@ -42,7 +48,7 @@ class AttachmentsBehavior extends Behavior
         ]);
 
         $this->Attachments->belongsTo($this->_table->getRegistryAlias(), [
-            'className' => 'Uskur/Attachments.Attachments',
+            'className' => $this->_table->getRegistryAlias(),
             'conditions' => [
                 'Attachments.model' => $this->getConfig('modelName') ? $this->getConfig('modelName') : $this->_table->getRegistryAlias(),
             ],
@@ -52,7 +58,14 @@ class AttachmentsBehavior extends Behavior
         parent::initialize($config);
     }
 
-    public function afterSave(Event $event, EntityInterface $entity)
+    /**
+     * Persist uploaded attachments after the owning entity is saved.
+     *
+     * @param \Cake\Event\EventInterface $event Event instance.
+     * @param \Cake\Datasource\EntityInterface $entity Saved entity.
+     * @return void
+     */
+    public function afterSave(EventInterface $event, EntityInterface $entity)
     {
         $uploads = $entity->get($this->getConfig('formFieldName'));
         if (empty($uploads)) {
@@ -80,6 +93,7 @@ class AttachmentsBehavior extends Behavior
                     $this->Attachments->addUpload($entity, $upload);
                 }
             }
+
             return;
         }
 
@@ -121,13 +135,14 @@ class AttachmentsBehavior extends Behavior
         if (!isset($this->getConfig('tags')[$tag])) {
             return '';
         }
+
         return $this->getConfig('tags')[$tag]['caption'];
     }
 
     /**
      * method to save the tags of an attachment
      *
-     * @param Attachment $attachment the attachment entity
+     * @param \Uskur\Attachments\Model\Entity\Attachment $attachment the attachment entity
      * @param array $tags array of tags
      * @return bool
      */
@@ -144,13 +159,14 @@ class AttachmentsBehavior extends Behavior
         }
 
         $this->Attachments->patchEntity($attachment, ['tags' => $newTags]);
+
         return (bool)$this->Attachments->save($attachment);
     }
 
     /**
      * removes given $tag from every attachment belonging to the same entity as given $attachment
      *
-     * @param Attachment $attachment the attachment entity which should get the exclusive tag
+     * @param \Uskur\Attachments\Model\Entity\Attachment $attachment the attachment entity which should get the exclusive tag
      * @param string $tag the exclusive tag to be removed
      * @return bool
      */
