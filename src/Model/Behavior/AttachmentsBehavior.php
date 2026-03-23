@@ -14,7 +14,7 @@ use Psr\Http\Message\UploadedFileInterface;
  */
 class AttachmentsBehavior extends Behavior
 {
-    protected $_defaultConfig = [
+    protected array $_defaultConfig = [
         'formFieldName' => 'attachment_uploads',
         'modelName' => null,
         'tags' => [],

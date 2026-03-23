@@ -43,7 +43,7 @@ class AttachmentsController extends AppController
             }
         }
         $this->set(compact('attachment'));
-        $this->set('_serialize', ['attachment']);
+        $this->viewBuilder()->setOption('serialize', ['attachment']);
 
         return $this->redirect($this->referer());
     }
@@ -57,9 +57,7 @@ class AttachmentsController extends AppController
      */
     public function edit($id = null)
     {
-        $attachment = $this->Attachments->get($id, [
-            'contain' => [],
-        ]);
+        $attachment = $this->Attachments->get($id, contain: []);
         if ($this->request->is(['patch', 'post', 'put'])) {
             $attachment = $this->Attachments->patchEntity($attachment, $this->request->getData());
             if ($this->Attachments->save($attachment)) {
@@ -72,7 +70,7 @@ class AttachmentsController extends AppController
         }
         $articles = $this->Attachments->Articles->find('list', ['limit' => 200]);
         $this->set(compact('attachment', 'articles'));
-        $this->set('_serialize', ['attachment']);
+        $this->viewBuilder()->setOption('serialize', ['attachment']);
     }
 
     /**
@@ -379,8 +377,9 @@ class AttachmentsController extends AppController
     {
         $reorder = $this->Attachments->find(
             'all',
-            ['fields' => ['id'], 'conditions' => ['foreign_key' => $fk]]
-        )->order(['filename ASC'])->toArray();
+            fields: ['id'],
+            conditions: ['foreign_key' => $fk]
+        )->orderBy(['filename ASC'])->toArray();
         $this->Attachments->setOrder($reorder);
     }
 
@@ -405,7 +404,7 @@ class AttachmentsController extends AppController
         $this->set('attachments', $attachments);
         $this->set('model', $model);
         $this->set('fk', $fk);
-        $this->set('_serialize', ['attachments']);
+        $this->viewBuilder()->setOption('serialize', ['attachments']);
     }
 
     /**
@@ -432,7 +431,7 @@ class AttachmentsController extends AppController
         }
 
         $this->set('attachment', $attachment);
-        $this->set('_serialize', ['attachment']);
+        $this->viewBuilder()->setOption('serialize', ['attachment']);
     }
 
     /**

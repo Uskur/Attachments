@@ -282,17 +282,16 @@ class AttachmentsTable extends Table
      *
      * @param string $articleId Article ID.
      * @param string $type MIME type prefix.
-     * @return \Cake\ORM\Query
+     * @return \Cake\ORM\Query\SelectQuery
      */
     public function getAttachmentsOfArticle($articleId, $type = 'image')
     {
-        return $this->find('all', [
-            'conditions' => [
-                'Attachments.article_id' => $articleId,
-                'Attachments.filetype LIKE' => "$type/%",
-            ],
-            'contain' => [],
-        ]);
+        return $this->find('all',
+        conditions: [
+            'Attachments.article_id' => $articleId,
+            'Attachments.filetype LIKE' => "$type/%",
+        ],
+        contain: []);
     }
 
     /**

@@ -29,12 +29,12 @@ class Attachment extends Entity
     /**
      * @var array
      */
-    protected $_accessible = [
+    protected array $_accessible = [
         '*' => true,
         'id' => false,
     ];
 
-    protected $_virtual = ['details_array', 'readable_size', 'readable_created'];
+    protected array $_virtual = ['details_array', 'readable_size', 'readable_created'];
 
     /**
      * Build the local filesystem path for the attachment.
