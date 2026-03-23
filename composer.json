@@ -6,7 +6,7 @@
         "php": ">=8.2",
         "ext-imagick": "*",
         "cakephp/cakephp": "^5.3",
-        "admad/cakephp-sequence": "^3.0",
+        "admad/cakephp-sequence": "^4.0",
         "gumlet/php-image-resize": "^2.0",
         "aws/aws-sdk-php": "^3.314"
     },
