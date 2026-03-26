@@ -332,7 +332,7 @@ $(function () {
           <button type="button" class="close" aria-hidden="true" data-dismiss="modal">×</button>
           <h4 class="modal-title"><?= __d('Uskur/WebpageManager', 'New Folder');?></h4>
         </div>
-        <?= $this->Form->create($fileFolder, ['id' => 'newFolderForm','url' => ['action' => 'add','_ext' => 'json']]) ?>
+        <?= $this->Form->create(null, ['id' => 'newFolderForm','url' => ['action' => 'add','_ext' => 'json']]) ?>
         <div class="modal-body">
 
             <?php
@@ -428,4 +428,4 @@ $(function () {
       </div>
     </div>
   </div>
-<?php echo $this->end();?>
+<?php $this->end(); ?>

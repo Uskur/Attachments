@@ -23,6 +23,7 @@ class AttachmentsController extends AppController
     public function add($model = null, $fk = null)
     {
         $attachment = $this->Attachments->newEmptyEntity();
+        $files = [];
         if ($this->request->is('post')) {
             if (is_null($fk)) {
                 $fk = $this->request->getData('fk');
@@ -36,14 +37,34 @@ class AttachmentsController extends AppController
             if ($this->request->getData('files')) {
                 foreach ($this->request->getData('files') as $file) {
                     $attachment = $this->Attachments->addUpload($entity, $file);
+                    if ($attachment) {
+                        $files[] = [
+                            'id' => $attachment->id,
+                            'name' => $attachment->filename,
+                            'size' => $attachment->size,
+                            'type' => $attachment->filetype,
+                        ];
+                    }
                 }
             } else {
                 $file = $this->request->getData('file');
                 $attachment = $this->Attachments->addUpload($entity, $file);
+                if ($attachment) {
+                    $files[] = [
+                        'id' => $attachment->id,
+                        'name' => $attachment->filename,
+                        'size' => $attachment->size,
+                        'type' => $attachment->filetype,
+                    ];
+                }
             }
         }
-        $this->set(compact('attachment'));
-        $this->viewBuilder()->setOption('serialize', ['attachment']);
+        $this->set(compact('attachment', 'files'));
+        $this->viewBuilder()->setOption('serialize', ['attachment', 'files']);
+
+        if ($this->request->getParam('_ext') === 'json') {
+            return null;
+        }
 
         return $this->redirect($this->referer());
     }
