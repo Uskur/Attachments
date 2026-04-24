@@ -1,8 +1,8 @@
 <?php
 
-use Migrations\AbstractMigration;
+use Migrations\BaseMigration;
 
-class AlterDetails extends AbstractMigration
+class AlterDetails extends BaseMigration
 {
     /**
      * Change Method.

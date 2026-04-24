@@ -25,7 +25,7 @@ class AttachmentsBehavior extends Behavior
     /**
      * @var \Uskur\Attachments\Model\Table\AttachmentsTable
      */
-    public $Attachments;
+    public \Uskur\Attachments\Model\Table\AttachmentsTable $Attachments;
 
     /**
      * Initialize the behavior and register attachment associations.
@@ -37,23 +37,27 @@ class AttachmentsBehavior extends Behavior
     {
         $this->Attachments = TableRegistry::getTableLocator()->get('Uskur/Attachments.Attachments');
 
-        $this->_table->hasMany('Attachments', [
-            'className' => 'Uskur/Attachments.Attachments',
-            'conditions' => [
-                'Attachments.model' => $this->getConfig('modelName') ? $this->getConfig('modelName') : $this->_table->getRegistryAlias(),
-            ],
-            'foreignKey' => 'foreign_key',
-            'dependent' => true,
-            'cascadeCallbacks' => true,
-        ]);
+        if (!$this->_table->associations()->has('Attachments')) {
+            $this->_table->hasMany('Attachments', [
+                'className' => 'Uskur/Attachments.Attachments',
+                'conditions' => [
+                    'Attachments.model' => $this->getConfig('modelName') ? $this->getConfig('modelName') : $this->_table->getRegistryAlias(),
+                ],
+                'foreignKey' => 'foreign_key',
+                'dependent' => true,
+                'cascadeCallbacks' => true,
+            ]);
+        }
 
-        $this->Attachments->belongsTo($this->_table->getRegistryAlias(), [
-            'className' => $this->_table->getRegistryAlias(),
-            'conditions' => [
-                'Attachments.model' => $this->getConfig('modelName') ? $this->getConfig('modelName') : $this->_table->getRegistryAlias(),
-            ],
-            'foreignKey' => 'foreign_key',
-        ]);
+        if (!$this->Attachments->associations()->has($this->_table->getRegistryAlias())) {
+            $this->Attachments->belongsTo($this->_table->getRegistryAlias(), [
+                'className' => $this->_table->getRegistryAlias(),
+                'conditions' => [
+                    'Attachments.model' => $this->getConfig('modelName') ? $this->getConfig('modelName') : $this->_table->getRegistryAlias(),
+                ],
+                'foreignKey' => 'foreign_key',
+            ]);
+        }
 
         parent::initialize($config);
     }

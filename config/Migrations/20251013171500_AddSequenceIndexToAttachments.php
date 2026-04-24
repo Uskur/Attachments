@@ -1,8 +1,8 @@
 <?php
 
-use Migrations\AbstractMigration;
+use Migrations\BaseMigration;
 
-class AddSequenceIndexToAttachments extends AbstractMigration
+class AddSequenceIndexToAttachments extends BaseMigration
 {
     /**
      * Change Method.
