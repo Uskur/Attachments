@@ -174,7 +174,12 @@ class AttachmentsController extends AppController
                     throw new \Exception('Invalid fill color parameter.');
                 }
 
-                $options[$option] = $this->request->getQuery($option);
+                $value = $this->request->getQuery($option);
+                if (in_array($option, ['w', 'h', 'c', 'e', 'q'], true)) {
+                    $value = (int)$value;
+                }
+
+                $options[$option] = $value;
             } elseif ($option == 'fc') {
                 // Default fill color to white.
                 $options['fc'] = 'ffffff';
@@ -240,11 +245,11 @@ class AttachmentsController extends AppController
                     $destinationY = 0;
                     //position resized image
                     if ($options['h'] > $imageHeight) {
-                        $destinationY = ($options['h'] - $imageHeight) / 2;
+                        $destinationY = (int)(($options['h'] - $imageHeight) / 2);
                     }
                     $destinationX = 0;
                     if ($options['w'] > $imageWidth) {
-                        $destinationX = ($options['w'] - $imageWidth) / 2;
+                        $destinationX = (int)(($options['w'] - $imageWidth) / 2);
                     }
                     imagecopy($imageDesc, $resizedImage, $destinationX, $destinationY, 0, 0, $imageWidth, $imageHeight);
                     imagedestroy($resizedImage);
