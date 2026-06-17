@@ -145,8 +145,10 @@ class AttachmentsTable extends Table
             'foreign_key' => $attachment->foreign_key,
             'md5' => $attachment->md5,
         ];
-        if (!empty($attachment->details)) {
+        if ($attachment->details !== null && $attachment->details !== '') {
             $existingConditions['details'] = $attachment->details;
+        } else {
+            $existingConditions['details IS'] = null;
         }
 
         $existing = $this->find()->where($existingConditions)->first();
@@ -194,14 +196,19 @@ class AttachmentsTable extends Table
             $attachment->details = json_encode($details);
         }
 
-        $existing = $this->find()
-            ->where([
-                'filename' => $attachment->filename,
-                'model' => $attachment->model,
-                'foreign_key' => $attachment->foreign_key,
-                'md5' => $attachment->md5,
-                'details' => $attachment->details,
-            ])->first();
+        $existingConditions = [
+            'filename' => $attachment->filename,
+            'model' => $attachment->model,
+            'foreign_key' => $attachment->foreign_key,
+            'md5' => $attachment->md5,
+        ];
+        if ($attachment->details !== null && $attachment->details !== '') {
+            $existingConditions['details'] = $attachment->details;
+        } else {
+            $existingConditions['details IS'] = null;
+        }
+
+        $existing = $this->find()->where($existingConditions)->first();
         if ($existing) {
             return $existing;
         }
