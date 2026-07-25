@@ -86,23 +86,14 @@ class AttachmentsBehavior extends Behavior
 
         if (is_array($uploads)) {
             foreach ($uploads as $upload) {
-                if ($upload instanceof UploadedFileInterface) {
-                    if ($upload->getError() === UPLOAD_ERR_OK && $upload->getClientFilename()) {
-                        $this->Attachments->addUpload($entity, $upload);
-                    }
-                    continue;
-                }
-
-                if (is_array($upload) && !empty($upload['name'])) {
+                if (
+                    $upload instanceof UploadedFileInterface
+                    && $upload->getError() === UPLOAD_ERR_OK
+                    && $upload->getClientFilename()
+                ) {
                     $this->Attachments->addUpload($entity, $upload);
                 }
             }
-
-            return;
-        }
-
-        if (is_array($uploads) && !empty($uploads['name'])) {
-            $this->Attachments->addUpload($entity, $uploads);
         }
     }
 

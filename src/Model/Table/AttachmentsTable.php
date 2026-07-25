@@ -107,12 +107,17 @@ class AttachmentsTable extends Table
      * Save one uploaded attachment.
      *
      * @param \Cake\Datasource\EntityInterface $entity Related entity.
-     * @param mixed $upload Uploaded file object or legacy upload array.
+     * @param \Psr\Http\Message\UploadedFileInterface $upload Uploaded file object.
      * @param array|null $allowed_types Allowed MIME types.
      * @param array $details Extra details.
      * @return \Uskur\Attachments\Model\Entity\Attachment|false
      */
-    public function addUpload(EntityInterface $entity, $upload, ?array $allowed_types = [], array $details = [])
+    public function addUpload(
+        EntityInterface $entity,
+        UploadedFileInterface $upload,
+        ?array $allowed_types = [],
+        array $details = [],
+    )
     {
         $allowed_types ??= [];
         $payload = $this->normalizeUpload($upload);
@@ -239,14 +244,8 @@ class AttachmentsTable extends Table
 
         if ($attachment->tmpPath) {
             $path = $attachment->get('path');
-            if (is_uploaded_file($attachment->tmpPath) && file_exists($attachment->tmpPath)) {
-                if (!move_uploaded_file($attachment->tmpPath, $path)) {
-                    throw new \Exception("Temporary file {$attachment->tmpPath} could not be moved to {$attachment->path}");
-                }
-            } else {
-                if (!copy($attachment->tmpPath, $path)) {
-                    throw new \Exception("File {$attachment->tmpPath} could not be copied to {$attachment->path}");
-                }
+            if (!copy($attachment->tmpPath, $path)) {
+                throw new \Exception("File {$attachment->tmpPath} could not be copied to {$attachment->path}");
             }
 
             if ($this->s3bucket !== false) {
@@ -378,57 +377,38 @@ class AttachmentsTable extends Table
     }
 
     /**
-     * Normalize uploaded file input from either PSR-7 or legacy arrays.
+     * Normalize a PSR-7 uploaded file.
      *
-     * @param mixed $upload Uploaded file input.
+     * @param \Psr\Http\Message\UploadedFileInterface $upload Uploaded file input.
      * @return array|null
      */
-    private function normalizeUpload($upload): ?array
+    private function normalizeUpload(UploadedFileInterface $upload): ?array
     {
-        if ($upload instanceof UploadedFileInterface) {
-            if ($upload->getError()) {
-                throw new \Exception('Upload errors.');
-            }
-
-            $stream = $upload->getStream();
-            if ($stream->tell() > 0) {
-                $stream->rewind();
-            }
-            $ctx = hash_init('md5');
-            while (!$stream->eof()) {
-                hash_update($ctx, $stream->read(1048576));
-            }
-            $md5 = hash_final($ctx);
-            $stream->seek(0);
-
-            return [
-                'filename' => $upload->getClientFilename(),
-                'size' => $upload->getSize(),
-                'type' => $upload->getClientMediaType(),
-                'md5' => $md5,
-                'upload' => $upload,
-            ];
+        if ($upload->getError() === UPLOAD_ERR_NO_FILE) {
+            return null;
+        }
+        if ($upload->getError() !== UPLOAD_ERR_OK) {
+            throw new \Exception('Upload errors.');
         }
 
-        if (is_array($upload) && !empty($upload['tmp_name']) && file_exists($upload['tmp_name'])) {
-            $fileName = basename($upload['tmp_name']);
-            $fileSize = filesize($upload['tmp_name']);
-            $fileMime = mime_content_type($upload['tmp_name']);
-            $fileMd5 = md5_file($upload['tmp_name']);
-            if ($fileSize === false || $fileMime === false || $fileMd5 === false) {
-                throw new \Exception("File {$upload['tmp_name']} could not be read.");
-            }
-
-            return [
-                'filename' => $upload['name'] ?? $fileName,
-                'size' => $fileSize,
-                'type' => $upload['type'] ?? $fileMime,
-                'md5' => $fileMd5,
-                'tmpPath' => $upload['tmp_name'],
-            ];
+        $stream = $upload->getStream();
+        if ($stream->tell() > 0) {
+            $stream->rewind();
         }
+        $ctx = hash_init('md5');
+        while (!$stream->eof()) {
+            hash_update($ctx, $stream->read(1048576));
+        }
+        $md5 = hash_final($ctx);
+        $stream->seek(0);
 
-        return null;
+        return [
+            'filename' => $upload->getClientFilename(),
+            'size' => $upload->getSize(),
+            'type' => $upload->getClientMediaType(),
+            'md5' => $md5,
+            'upload' => $upload,
+        ];
     }
 
     /**
