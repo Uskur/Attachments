@@ -26,6 +26,20 @@ use Cake\ORM\Entity;
  */
 class Attachment extends Entity
 {
+    private const DOCUMENT_PREVIEW_EXTENSIONS = [
+        // Writer
+        'doc', 'docx', 'docm', 'dot', 'dotx', 'dotm',
+        'odt', 'ott', 'fodt', 'rtf', 'sxw', 'stw', 'wps',
+        // Calc
+        'xls', 'xlsx', 'xlsm', 'xlsb', 'xlt', 'xltx', 'xltm',
+        'ods', 'ots', 'fods', 'sxc', 'stc', 'csv', 'tsv',
+        // Impress
+        'ppt', 'pptx', 'pptm', 'pot', 'potx', 'potm',
+        'pps', 'ppsx', 'ppsm', 'odp', 'otp', 'fodp', 'sxi', 'sti',
+        // Draw and other office document formats
+        'odg', 'otg', 'fodg', 'vsd', 'vsdx', 'vdx', 'pub',
+    ];
+
     /**
      * @var array
      */
@@ -116,6 +130,23 @@ class Attachment extends Entity
         $pathinfo = pathinfo($this->filename);
 
         return $pathinfo['extension'] ?? null;
+    }
+
+    /**
+     * Whether the image endpoint can generate a visual preview of this attachment.
+     */
+    public function canGeneratePreview(): bool
+    {
+        $filetype = (string)($this->filetype ?? '');
+        if (str_starts_with($filetype, 'image/') || $filetype === 'application/pdf') {
+            return true;
+        }
+
+        return in_array(
+            strtolower((string)$this->extension),
+            self::DOCUMENT_PREVIEW_EXTENSIONS,
+            true,
+        );
     }
 
     /**

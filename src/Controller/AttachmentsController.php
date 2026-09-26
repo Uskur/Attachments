@@ -333,7 +333,7 @@ class AttachmentsController extends AppController
         if (str_starts_with($attachment->filetype, 'image/')) {
             return [$attachment->path, null];
         }
-        if ($attachment->filetype !== 'application/pdf' && !$this->supportsDocumentPreview($attachment)) {
+        if (!$attachment->canGeneratePreview()) {
             throw new HttpException('Preview generation is not supported for this file type.', 415);
         }
 
@@ -364,35 +364,6 @@ class AttachmentsController extends AppController
             $this->removeDirectory($temporaryDirectory);
             throw $exception;
         }
-    }
-
-    /**
-     * Check whether an attachment belongs to a LibreOffice document family.
-     *
-     * The original filename extension is intentionally allowlisted before the
-     * file is passed to LibreOffice. MIME types alone are not sufficiently
-     * reliable for uploaded Office documents.
-     *
-     * @param \Uskur\Attachments\Model\Entity\Attachment $attachment Attachment.
-     * @return bool
-     */
-    private function supportsDocumentPreview(Attachment $attachment): bool
-    {
-        $supportedExtensions = [
-            // Writer
-            'doc', 'docx', 'docm', 'dot', 'dotx', 'dotm',
-            'odt', 'ott', 'fodt', 'rtf', 'sxw', 'stw', 'wps',
-            // Calc
-            'xls', 'xlsx', 'xlsm', 'xlsb', 'xlt', 'xltx', 'xltm',
-            'ods', 'ots', 'fods', 'sxc', 'stc', 'csv', 'tsv',
-            // Impress
-            'ppt', 'pptx', 'pptm', 'pot', 'potx', 'potm',
-            'pps', 'ppsx', 'ppsm', 'odp', 'otp', 'fodp', 'sxi', 'sti',
-            // Draw and other office document formats
-            'odg', 'otg', 'fodg', 'vsd', 'vsdx', 'vdx', 'pub',
-        ];
-
-        return in_array(strtolower((string)$attachment->extension), $supportedExtensions, true);
     }
 
     /**
