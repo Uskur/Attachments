@@ -6,6 +6,7 @@ namespace Uskur\Attachments\Controller;
 use Cake\Http\Exception\HttpException;
 use Cake\Http\Exception\NotImplementedException;
 use Cake\Http\Exception\UnprocessableContentException;
+use Cake\Http\Response;
 use Cake\ORM\TableRegistry;
 use FilesystemIterator;
 use Gumlet\ImageResize;
@@ -202,14 +203,13 @@ class AttachmentsController extends AppController
         if ($this->request->accepts('image/webp') && defined('IMAGETYPE_WEBP')) {
             $options['type'] = IMAGETYPE_WEBP;
         }
-
         $cacheFolder = CACHE . 'image';
         $cacheKey = implode('', array_map(
             function ($v, $k) {
                 return "$k$v";
             },
             $options,
-            array_keys($options)
+            array_keys($options),
         ));
         $cacheFile = $cacheFolder . DS . md5($id . $cacheKey);
         if (!file_exists($cacheFile)) {
@@ -224,71 +224,278 @@ class AttachmentsController extends AppController
             $temporaryDirectory = null;
             try {
                 [$imagePath, $temporaryDirectory] = $this->previewImageSource($attachment);
-                $image = new ImageResize($imagePath);
-                if ($options['m'] == 'fill') {
-                    //resize and temporarily save
-                    $image->resizeToBestFit($options['w'], $options['h'], $options['e']);
-                    $tempImage = '/tmp/' . rand();
-                    $image->save($tempImage, IMAGETYPE_JPEG);
-
+                if ($attachment->filetype === 'image/gif') {
+                    $this->resizeGif($imagePath, $cacheFile, $options);
+                } else {
                     $image = new ImageResize($imagePath);
-                    $image->resize($options['w'], $options['h'], true);
-                    $image->addFilter(function ($imageDesc) use ($options, $tempImage): void {
-                        [$r, $g, $b] = sscanf($options['fc'], '%02x%02x%02x');
-                        $backgroundColor = imagecolorallocate($imageDesc, $r, $g, $b);
-                        imagefilledrectangle($imageDesc, 0, 0, $options['w'], $options['h'], $backgroundColor);
+                    if ($options['m'] == 'fill') {
+                        //resize and temporarily save
+                        $image->resizeToBestFit($options['w'], $options['h'], $options['e']);
+                        $tempImage = '/tmp/' . rand();
+                        $image->save($tempImage, IMAGETYPE_JPEG);
 
-                        $resizedImage = imagecreatefromjpeg($tempImage);
-                        $imageHeight = imagesy($resizedImage);
-                        $imageWidth = imagesx($resizedImage);
-                        $destinationY = 0;
-                        //position resized image
-                        if ($options['h'] > $imageHeight) {
-                            $destinationY = (int)(($options['h'] - $imageHeight) / 2);
-                        }
-                        $destinationX = 0;
-                        if ($options['w'] > $imageWidth) {
-                            $destinationX = (int)(($options['w'] - $imageWidth) / 2);
-                        }
-                        imagecopy(
-                            $imageDesc,
-                            $resizedImage,
-                            $destinationX,
-                            $destinationY,
-                            0,
-                            0,
-                            $imageWidth,
-                            $imageHeight,
-                        );
-                        imagedestroy($resizedImage);
-                        //delete temp image
-                        unlink($tempImage);
-                    });
-                } elseif ($options['w'] && $options['h'] && $options['c']) {
-                    $image->crop($options['w'], $options['h'], $options['e']);
-                } elseif ($options['w'] && $options['h']) {
-                    $image->resizeToBestFit($options['w'], $options['h'], $options['e']);
-                } elseif ($options['h']) {
-                    $image->resizeToHeight($options['h'], $options['e']);
-                } elseif ($options['w']) {
-                    $image->resizeToWidth($options['w'], $options['e']);
-                }
+                        $image = new ImageResize($imagePath);
+                        $image->resize($options['w'], $options['h'], true);
+                        $image->addFilter(function ($imageDesc) use ($options, $tempImage): void {
+                            [$r, $g, $b] = sscanf($options['fc'], '%02x%02x%02x');
+                            $backgroundColor = imagecolorallocate($imageDesc, $r, $g, $b);
+                            imagefilledrectangle($imageDesc, 0, 0, $options['w'], $options['h'], $backgroundColor);
 
-                //preserve PNG for transparency
-                if ($attachment->filetype == 'image/png' && $options['type'] != IMAGETYPE_WEBP) {
-                    $options['type'] = IMAGETYPE_PNG;
-                    //modify quality imagejpeg to imagepng
-                    if (!is_null($options['q'])) {
-                        $options['q'] = (int)round((100 - $options['q']) / 10);
+                            $resizedImage = imagecreatefromjpeg($tempImage);
+                            $imageHeight = imagesy($resizedImage);
+                            $imageWidth = imagesx($resizedImage);
+                            $destinationY = 0;
+                            //position resized image
+                            if ($options['h'] > $imageHeight) {
+                                $destinationY = (int)(($options['h'] - $imageHeight) / 2);
+                            }
+                            $destinationX = 0;
+                            if ($options['w'] > $imageWidth) {
+                                $destinationX = (int)(($options['w'] - $imageWidth) / 2);
+                            }
+                            imagecopy(
+                                $imageDesc,
+                                $resizedImage,
+                                $destinationX,
+                                $destinationY,
+                                0,
+                                0,
+                                $imageWidth,
+                                $imageHeight,
+                            );
+                            imagedestroy($resizedImage);
+                            //delete temp image
+                            unlink($tempImage);
+                        });
+                    } elseif ($options['w'] && $options['h'] && $options['c']) {
+                        $image->crop($options['w'], $options['h'], $options['e']);
+                    } elseif ($options['w'] && $options['h']) {
+                        $image->resizeToBestFit($options['w'], $options['h'], $options['e']);
+                    } elseif ($options['h']) {
+                        $image->resizeToHeight($options['h'], $options['e']);
+                    } elseif ($options['w']) {
+                        $image->resizeToWidth($options['w'], $options['e']);
                     }
+
+                    //preserve PNG for transparency
+                    if ($attachment->filetype == 'image/png' && $options['type'] != IMAGETYPE_WEBP) {
+                        $options['type'] = IMAGETYPE_PNG;
+                        //modify quality imagejpeg to imagepng
+                        if (!is_null($options['q'])) {
+                            $options['q'] = (int)round((100 - $options['q']) / 10);
+                        }
+                    }
+                    $image->save($cacheFile, $options['type'], $options['q']);
                 }
-                $image->save($cacheFile, $options['type'], $options['q']);
             } finally {
                 if ($temporaryDirectory !== null) {
                     $this->removeDirectory($temporaryDirectory);
                 }
             }
         }
+        return $this->serveCachedImage($cacheFile, $attachment ?? null);
+    }
+
+    /**
+     * Resize every frame of a GIF while preserving its animation metadata.
+     *
+     * @param string $imagePath Source GIF path.
+     * @param string $cacheFile Destination cache path.
+     * @param array<string, mixed> $options Resize options.
+     * @return void
+     */
+    private function resizeGif(string $imagePath, string $cacheFile, array $options): void
+    {
+        $temporaryFile = tempnam(dirname($cacheFile), 'animated-gif-');
+        if ($temporaryFile === false) {
+            throw new RuntimeException('A temporary GIF cache file could not be created.');
+        }
+        $image = new Imagick($imagePath);
+        $image->setFirstIterator();
+        $iterations = $image->getImageIterations();
+        $frames = $image->coalesceImages();
+
+        try {
+            foreach ($frames as $frame) {
+                $delay = $frame->getImageDelay();
+                $dispose = $frame->getImageDispose();
+
+                $this->resizeGifFrame($frame, $options);
+
+                $frame->setImageDelay($delay);
+                $frame->setImageDispose($dispose);
+                $frame->setImagePage($frame->getImageWidth(), $frame->getImageHeight(), 0, 0);
+                $frame->setImageFormat('gif');
+                if ($options['q'] !== null) {
+                    $frame->setImageCompressionQuality($options['q']);
+                }
+            }
+
+            $optimized = $frames->optimizeImageLayers();
+            try {
+                $optimized->setFirstIterator();
+                $optimized->setImageIterations($iterations);
+                if (!$optimized->writeImages($temporaryFile, true)) {
+                    throw new RuntimeException('The resized GIF could not be written.');
+                }
+                if (!rename($temporaryFile, $cacheFile)) {
+                    throw new RuntimeException('The resized GIF could not be cached.');
+                }
+            } finally {
+                $optimized->clear();
+                $optimized->destroy();
+            }
+        } finally {
+            $frames->clear();
+            $frames->destroy();
+            $image->clear();
+            $image->destroy();
+            if (is_file($temporaryFile)) {
+                unlink($temporaryFile);
+            }
+        }
+    }
+
+    /**
+     * Apply the requested resize operation to one coalesced GIF frame.
+     *
+     * @param \Imagick $frame GIF frame.
+     * @param array<string, mixed> $options Resize options.
+     * @return void
+     */
+    private function resizeGifFrame(Imagick $frame, array $options): void
+    {
+        $sourceWidth = $frame->getImageWidth();
+        $sourceHeight = $frame->getImageHeight();
+        $width = $options['w'];
+        $height = $options['h'];
+        $allowEnlarge = (bool)$options['e'];
+
+        if ($options['m'] === 'fill' && $width && $height) {
+            [$resizedWidth, $resizedHeight] = $this->bestFitDimensions(
+                $sourceWidth,
+                $sourceHeight,
+                $width,
+                $height,
+                $allowEnlarge,
+            );
+            $this->resizeImagickFrame($frame, $resizedWidth, $resizedHeight);
+            $frame->setImageBackgroundColor('#' . $options['fc']);
+            $frame->extentImage(
+                $width,
+                $height,
+                (int)round(($resizedWidth - $width) / 2),
+                (int)round(($resizedHeight - $height) / 2),
+            );
+            $frame->setImageAlphaChannel(Imagick::ALPHACHANNEL_REMOVE);
+
+            return;
+        }
+
+        if ($width && $height && $options['c']) {
+            if (!$allowEnlarge) {
+                $width = min($width, $sourceWidth);
+                $height = min($height, $sourceHeight);
+            }
+            $scale = max($width / $sourceWidth, $height / $sourceHeight);
+            $resizedWidth = max(1, (int)round($sourceWidth * $scale));
+            $resizedHeight = max(1, (int)round($sourceHeight * $scale));
+            $this->resizeImagickFrame($frame, $resizedWidth, $resizedHeight);
+            $frame->cropImage(
+                $width,
+                $height,
+                (int)round(($resizedWidth - $width) / 2),
+                (int)round(($resizedHeight - $height) / 2),
+            );
+
+            return;
+        }
+
+        if ($width && $height) {
+            [$width, $height] = $this->bestFitDimensions(
+                $sourceWidth,
+                $sourceHeight,
+                $width,
+                $height,
+                $allowEnlarge,
+            );
+        } elseif ($height) {
+            $scale = $height / $sourceHeight;
+            if (!$allowEnlarge) {
+                $scale = min(1, $scale);
+            }
+            $width = max(1, (int)round($sourceWidth * $scale));
+            $height = max(1, (int)round($sourceHeight * $scale));
+        } elseif ($width) {
+            $scale = $width / $sourceWidth;
+            if (!$allowEnlarge) {
+                $scale = min(1, $scale);
+            }
+            $width = max(1, (int)round($sourceWidth * $scale));
+            $height = max(1, (int)round($sourceHeight * $scale));
+        } else {
+            return;
+        }
+
+        $this->resizeImagickFrame($frame, $width, $height);
+    }
+
+    /**
+     * Calculate dimensions that fit inside a bounding box.
+     *
+     * @param int $sourceWidth Source width.
+     * @param int $sourceHeight Source height.
+     * @param int $maximumWidth Maximum width.
+     * @param int $maximumHeight Maximum height.
+     * @param bool $allowEnlarge Whether enlarging is allowed.
+     * @return array{0: int, 1: int}
+     */
+    private function bestFitDimensions(
+        int $sourceWidth,
+        int $sourceHeight,
+        int $maximumWidth,
+        int $maximumHeight,
+        bool $allowEnlarge,
+    ): array {
+        $scale = min($maximumWidth / $sourceWidth, $maximumHeight / $sourceHeight);
+        if (!$allowEnlarge) {
+            $scale = min(1, $scale);
+        }
+
+        return [
+            max(1, (int)round($sourceWidth * $scale)),
+            max(1, (int)round($sourceHeight * $scale)),
+        ];
+    }
+
+    /**
+     * Resize one GIF frame when its dimensions need to change.
+     *
+     * @param \Imagick $frame GIF frame.
+     * @param int $width Destination width.
+     * @param int $height Destination height.
+     * @return void
+     */
+    private function resizeImagickFrame(Imagick $frame, int $width, int $height): void
+    {
+        if ($frame->getImageWidth() === $width && $frame->getImageHeight() === $height) {
+            return;
+        }
+
+        $frame->resizeImage($width, $height, Imagick::FILTER_LANCZOS, 1);
+    }
+
+    /**
+     * Build the response for a cached image variant.
+     *
+     * @param string $cacheFile Cached image path.
+     * @param \Uskur\Attachments\Model\Entity\Attachment|null $attachment Attachment, when loaded.
+     * @return \Cake\Http\Response
+     */
+    private function serveCachedImage(
+        string $cacheFile,
+        ?Attachment $attachment,
+    ): Response {
         if (!file_exists($cacheFile)) {
             throw new \Exception("File {$cacheFile} cannot be read.");
         }
@@ -299,7 +506,7 @@ class AttachmentsController extends AppController
         }
         $response = $this->response->withFile(
             $cacheFile,
-            ['download' => false, 'name' => (isset($attachment) ? $attachment->filename : null)]
+            ['download' => false, 'name' => $attachment?->filename],
         )
             ->withVary('Accept')
             ->withType($cacheMime)
@@ -308,7 +515,7 @@ class AttachmentsController extends AppController
             ->withMustRevalidate(false)
             ->withModified($cacheMTime);
 
-        if ($options['type'] == IMAGETYPE_WEBP) {
+        if ($cacheMime === 'image/webp') {
             $response = $response->withSharable(false);
         }
 
