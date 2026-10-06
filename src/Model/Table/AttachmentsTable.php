@@ -305,7 +305,7 @@ class AttachmentsTable extends Table
      *
      * @param string $id Attachment ID.
      * @param string $tmpPath Path to the new file.
-     * @return bool|\Uskur\Attachments\Model\Entity\Attachment
+     * @return \Uskur\Attachments\Model\Entity\Attachment|bool
      */
     public function replaceFile(string $id, string $tmpPath)
     {
@@ -362,15 +362,17 @@ class AttachmentsTable extends Table
      *
      * @param string $id Attachment ID.
      * @param \Cake\Datasource\EntityInterface $entity The target entity.
+     * @param int|null $sequence Position for the copied attachment.
      * @return bool|\Uskur\Attachments\Model\Entity\Attachment
      */
-    public function copyAttachment($id, $entity)
+    public function copyAttachment($id, $entity, ?int $sequence = null)
     {
         $currentAttachment = $this->get($id);
         $newAttachmentData = $currentAttachment->toArray();
         unset($newAttachmentData['id'], $newAttachmentData['created'], $newAttachmentData['sequence']);
         $newAttachmentData['model'] = $entity->getSource();
         $newAttachmentData['foreign_key'] = $entity->id;
+        $newAttachmentData['sequence'] = $sequence;
         $newAttachment = $this->newEntity($newAttachmentData);
 
         return $this->save($newAttachment) ? $newAttachment : false;
