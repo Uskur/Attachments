@@ -11,6 +11,7 @@ use Cake\ORM\TableRegistry;
 use FilesystemIterator;
 use Gumlet\ImageResize;
 use Imagick;
+use Psr\Http\Message\UploadedFileInterface;
 use RuntimeException;
 use Throwable;
 use Uskur\Attachments\Model\Entity\Attachment;
@@ -22,6 +23,9 @@ use Uskur\Attachments\Model\Entity\Attachment;
  */
 class AttachmentsController extends AppController
 {
+    private const EDIT_FIELDS = ['filename', 'details', 'tags'];
+    private const DETAIL_FIELDS = ['title', 'description', 'link'];
+
     /**
      * Add method
      *
@@ -31,6 +35,7 @@ class AttachmentsController extends AppController
      */
     public function add($model = null, $fk = null)
     {
+        $this->request->allowMethod(['post']);
         $attachment = $this->Attachments->newEmptyEntity();
         $files = [];
         if ($this->request->is('post')) {
@@ -41,11 +46,39 @@ class AttachmentsController extends AppController
                 $model = $this->request->getData('model');
             }
             $model = str_replace('-', '/', $model);
-            $Model = TableRegistry::getTableLocator()->get($model);
+            $Model = $this->Attachments->getOwnerTable($model);
             $entity = $Model->get($fk);
-            if ($this->request->getData('files')) {
-                foreach ($this->request->getData('files') as $file) {
+            $this->Attachments->getConnection()->transactional(function () use ($entity, &$attachment, &$files): void {
+                if ($this->request->getData('files')) {
+                    if (!is_array($this->request->getData('files'))) {
+                        throw new UnprocessableContentException('Invalid upload data.');
+                    }
+                    foreach ($this->request->getData('files') as $file) {
+                        if (!$file instanceof UploadedFileInterface) {
+                            throw new UnprocessableContentException('Invalid upload data.');
+                        }
+                        $attachment = $this->Attachments->addUpload($entity, $file);
+                        if (!$attachment) {
+                            throw new UnprocessableContentException('The attachment could not be saved.');
+                        }
+                        if ($attachment) {
+                            $files[] = [
+                                'id' => $attachment->id,
+                                'name' => $attachment->filename,
+                                'size' => $attachment->size,
+                                'type' => $attachment->filetype,
+                            ];
+                        }
+                    }
+                } else {
+                    $file = $this->request->getData('file');
+                    if (!$file instanceof UploadedFileInterface) {
+                        throw new UnprocessableContentException('Invalid upload data.');
+                    }
                     $attachment = $this->Attachments->addUpload($entity, $file);
+                    if (!$attachment) {
+                        throw new UnprocessableContentException('The attachment could not be saved.');
+                    }
                     if ($attachment) {
                         $files[] = [
                             'id' => $attachment->id,
@@ -55,18 +88,7 @@ class AttachmentsController extends AppController
                         ];
                     }
                 }
-            } else {
-                $file = $this->request->getData('file');
-                $attachment = $this->Attachments->addUpload($entity, $file);
-                if ($attachment) {
-                    $files[] = [
-                        'id' => $attachment->id,
-                        'name' => $attachment->filename,
-                        'size' => $attachment->size,
-                        'type' => $attachment->filetype,
-                    ];
-                }
-            }
+            });
         }
         $this->set(compact('attachment', 'files'));
         $this->viewBuilder()->setOption('serialize', ['attachment', 'files']);
@@ -87,19 +109,19 @@ class AttachmentsController extends AppController
      */
     public function edit($id = null)
     {
+        $this->request->allowMethod(['get', 'post', 'patch', 'put']);
         $attachment = $this->Attachments->get($id, contain: []);
         if ($this->request->is(['patch', 'post', 'put'])) {
-            $attachment = $this->Attachments->patchEntity($attachment, $this->request->getData());
+            $attachment = $this->Attachments->patchEntity($attachment, $this->request->getData(), ['fields' => self::EDIT_FIELDS, 'associated' => []]);
             if ($this->Attachments->save($attachment)) {
                 $this->Flash->success(__('The attachment has been saved.'));
 
-                return $this->redirect(['action' => 'index']);
+                return $this->redirect($this->referer());
             } else {
                 $this->Flash->error(__('The attachment could not be saved. Please, try again.'));
             }
         }
-        $articles = $this->Attachments->Articles->find('list', ['limit' => 200]);
-        $this->set(compact('attachment', 'articles'));
+        $this->set(compact('attachment'));
         $this->viewBuilder()->setOption('serialize', ['attachment']);
     }
 
@@ -115,10 +137,16 @@ class AttachmentsController extends AppController
         $this->request->allowMethod(['post', 'delete']);
         $attachment = $this->Attachments->get($id);
         if ($this->Attachments->delete($attachment)) {
+            if ($this->request->is('ajax') || $this->request->getParam('_ext') === 'json') {
+                return $this->response->withType('application/json')->withStringBody(json_encode(['success' => true]));
+            }
             if (!$this->request->is('ajax')) {
                 $this->Flash->success(__('The attachment has been deleted.'));
             }
         } else {
+            if ($this->request->is('ajax') || $this->request->getParam('_ext') === 'json') {
+                throw new UnprocessableContentException('The attachment could not be deleted.');
+            }
             if (!$this->request->is('ajax')) {
                 $this->Flash->error(__('The attachment could not be deleted. Please, try again.'));
             }
@@ -142,6 +170,7 @@ class AttachmentsController extends AppController
      */
     public function image($id)
     {
+        $this->request->allowMethod(['get', 'head']);
         //handle options
         $validOptions = ['w', 'h', 'c', 'm', 'e', 'q', 'fc'];
         $options = [];
@@ -222,6 +251,7 @@ class AttachmentsController extends AppController
                 throw new \Exception("File {$attachment->path} cannot be read.");
             }
             $temporaryDirectory = null;
+            $tempImage = null;
             try {
                 [$imagePath, $temporaryDirectory] = $this->previewImageSource($attachment);
                 if ($attachment->filetype === 'image/gif') {
@@ -231,7 +261,10 @@ class AttachmentsController extends AppController
                     if ($options['m'] == 'fill') {
                         //resize and temporarily save
                         $image->resizeToBestFit($options['w'], $options['h'], $options['e']);
-                        $tempImage = '/tmp/' . rand();
+                        $tempImage = tempnam(TMP, 'attachment-preview-');
+                        if ($tempImage === false) {
+                            throw new RuntimeException('A preview staging file could not be created.');
+                        }
                         $image->save($tempImage, IMAGETYPE_JPEG);
 
                         $image = new ImageResize($imagePath);
@@ -288,6 +321,9 @@ class AttachmentsController extends AppController
                     $image->save($cacheFile, $options['type'], $options['q']);
                 }
             } finally {
+                if ($tempImage !== null && $tempImage !== false && is_file($tempImage)) {
+                    unlink($tempImage);
+                }
                 if ($temporaryDirectory !== null) {
                     $this->removeDirectory($temporaryDirectory);
                 }
@@ -738,6 +774,7 @@ class AttachmentsController extends AppController
      */
     public function file($id, $name = null)
     {
+        $this->request->allowMethod(['get', 'head']);
         $attachment = $this->Attachments->get($id);
         if (!file_exists($attachment->path)) {
             throw new \Exception("File {$attachment->path} cannot be read.");
@@ -774,6 +811,7 @@ class AttachmentsController extends AppController
      */
     public function download($id, $name = null)
     {
+        $this->request->allowMethod(['get', 'head']);
         $attachment = $this->Attachments->get($id);
         if (!file_exists($attachment->path)) {
             throw new \Exception("File {$attachment->path} cannot be read.");
@@ -809,11 +847,14 @@ class AttachmentsController extends AppController
      */
     public function updatePosition($id = null, $newPosition = null)
     {
+        $this->request->allowMethod(['post']);
         $attachment = $this->Attachments->get($id);
         $attachment->sequence = $newPosition;
-        $this->Attachments->save($attachment);
-        $this->set('attachment', $attachment);
-        exit;
+        if (!$this->Attachments->save($attachment)) {
+            throw new UnprocessableContentException('The attachment position could not be saved.');
+        }
+        $this->set('success', true);
+        $this->viewBuilder()->setClassName('Json')->setOption('serialize', ['success']);
     }
 
     /**
@@ -822,14 +863,18 @@ class AttachmentsController extends AppController
      * @param string $fk Foreign key.
      * @return void
      */
-    public function reorder($fk)
+    public function reorder($model, $fk)
     {
-        $reorder = $this->Attachments->find(
-            'all',
-            fields: ['id'],
-            conditions: ['foreign_key' => $fk]
-        )->orderBy(['filename ASC'])->toArray();
-        $this->Attachments->setOrder($reorder);
+        $this->request->allowMethod(['post']);
+        $model = str_replace('-', '/', $model);
+        $this->Attachments->getOwnerTable($model);
+        $reorder = $this->Attachments->find()->where(['model' => $model, 'foreign_key' => $fk])
+            ->orderBy(['filename' => 'ASC'])->all()->toList();
+        if (!$this->Attachments->setOrder($reorder)) {
+            throw new UnprocessableContentException('The attachment order could not be saved.');
+        }
+        $this->set('success', true);
+        $this->viewBuilder()->setClassName('Json')->setOption('serialize', ['success']);
     }
 
     /**
@@ -841,9 +886,11 @@ class AttachmentsController extends AppController
      */
     public function list($model, $fk)
     {
+        $this->request->allowMethod(['get']);
         $this->viewBuilder()->setTheme('Uskur/RemarkTemplate');
         $this->viewBuilder()->setLayout('Uskur/RemarkTemplate.topbar-pageaside-left');
         $model = str_replace('-', '/', $model);
+        $this->Attachments->getOwnerTable($model);
         $attachments = $this->Attachments->find('all');
         $attachments->where(['Attachments.model' => $model, 'Attachments.foreign_key' => $fk]);
         if ($this->request->getQuery('filter') == 'image') {
@@ -864,19 +911,15 @@ class AttachmentsController extends AppController
      */
     public function fileAttribute($id)
     {
+        $this->request->allowMethod(['get', 'post', 'patch', 'put']);
         $attachment = $this->Attachments->get($id);
-        if ($this->request->is('post')) {
-            $attachmentDetails = $attachment->details;
-            foreach ($this->request->getData() as $detail => $value) {
-                if ($detail == 'id') {
-                    continue;
-                }
-                $attachmentDetails[$detail] = $value;
+        if ($this->request->is(['post', 'patch', 'put'])) {
+            foreach (array_intersect_key($this->request->getData(), array_flip(self::DETAIL_FIELDS)) as $detail => $value) {
+                $attachment->setDetail($detail, $value);
             }
-            $attachment->details = $attachmentDetails;
-            $this->Attachments->save($attachment);
-
-            return $this->redirect($this->referer());
+            if (!$this->Attachments->save($attachment)) {
+                throw new UnprocessableContentException('The attachment details could not be saved.');
+            }
         }
 
         $this->set('attachment', $attachment);
@@ -894,8 +937,13 @@ class AttachmentsController extends AppController
      */
     public function stream($id, $name = null)
     {
+        $this->request->allowMethod(['get', 'head']);
         $this->buffer = 102400;
         $attachment = $this->Attachments->get($id);
+        if (!str_starts_with((string)$attachment->filetype, 'video/') && !str_starts_with((string)$attachment->filetype, 'audio/')) {
+            throw new UnprocessableContentException('The attachment is not a media stream.');
+        }
+        header('X-Content-Type-Options: nosniff');
         if (!file_exists($attachment->path)) {
             throw new \Exception("File {$attachment->path} cannot be read.");
         }
@@ -982,24 +1030,40 @@ class AttachmentsController extends AppController
      */
     public function editImage($id)
     {
+        $this->request->allowMethod(['get', 'post', 'patch', 'put']);
         $image = $this->Attachments->get($id);
         if ($this->request->is(['patch', 'post', 'put'])) {
-            $tempPath = tempnam('/tmp', 'replace');
-            $img = str_replace('data:image/png;base64,', '', $this->request->getData('image'));
-            $img = str_replace(' ', '+', $img);
-            file_put_contents($tempPath, base64_decode($img));
-
-            if ($this->Attachments->replaceFile($id, $tempPath)) {
-                $this->Flash->success(__('Image modified.'));
-                $redirectTo = $this->getRequest()->getSession()->consume('Attachment.redirectAfter');
-                if ($redirectTo) {
-                    return $this->redirect($redirectTo);
+            $data = $this->request->getData('image');
+            $encoded = is_string($data) && str_starts_with($data, 'data:image/png;base64,') ? substr($data, 22) : null;
+            $bytes = $encoded !== null ? base64_decode(str_replace(' ', '+', $encoded), true) : false;
+            if ($bytes === false || !str_starts_with($bytes, "\x89PNG\r\n\x1a\n")
+                || (@getimagesizefromstring($bytes)['mime'] ?? null) !== 'image/png') {
+                throw new UnprocessableContentException('Invalid image data.');
+            }
+            $tempPath = tempnam(TMP, 'attachment-replace-');
+            if ($tempPath === false) {
+                throw new RuntimeException('The replacement image could not be staged.');
+            }
+            try {
+                if (file_put_contents($tempPath, $bytes) === false) {
+                    throw new RuntimeException('The replacement image could not be staged.');
                 }
-            } else {
-                $this->Flash->error(__('Image could not be saved. Please, try again.'));
+                if ($this->Attachments->replaceFile($id, $tempPath)) {
+                    $this->Flash->success(__('Image modified.'));
+                    $redirectTo = $this->getRequest()->getSession()->consume('Attachment.redirectAfter');
+                    if ($redirectTo) {
+                        return $this->redirect($redirectTo);
+                    }
+                } else {
+                    $this->Flash->error(__('Image could not be saved. Please, try again.'));
+                }
+            } finally {
+                if (is_file($tempPath)) {
+                    unlink($tempPath);
+                }
             }
         } else {
-            $this->getRequest()->getSession()->write('Attachment.redirectAfter', $this->referer());
+            $this->getRequest()->getSession()->write('Attachment.redirectAfter', $this->referer('/', true));
         }
         $this->set('image', $image);
     }

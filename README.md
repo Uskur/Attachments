@@ -1,6 +1,6 @@
 # Attachments
 
-CakePHP plugin for storing uploaded files against arbitrary owner records.
+CakePHP plugin for storing uploaded files against registered owner records.
 
 ## Installation
 
@@ -25,8 +25,8 @@ $this->addBehavior('Uskur/Attachments.Attachments');
 ## Usage
 
 The behavior reads uploaded files from `attachment_uploads` by default and stores them
-after the owning entity has been saved. It accepts both PSR-7 uploaded files and legacy
-upload arrays.
+after the owning entity has been saved. It accepts PSR-7 uploaded files. Use the native request upload objects rather than
+legacy upload arrays.
 
 ## Routing
 
@@ -44,7 +44,27 @@ Local files are stored under `Configure::read('Attachment.path')`, sharded by MD
 prefix. If S3 settings are configured, files are also pushed to object storage and can
 be fetched back to local disk when needed.
 
-## CakePHP 4 Notes
+## Authorization and upgrades
+
+See [the host integration guide](docs/authorization.md) for owner registration,
+permissions, CSRF, writable fields, replacement, and retryable storage cleanup.
+
+## Testing
+
+The package suite uses CakePHP fixtures and the enclosing host application's test
+bootstrap and migrations. Run from the host root:
+
+```bash
+ddev exec vendor/bin/phpunit -c vendor/uskur/attachments/phpunit.xml.dist
+```
+
+The configured test database must be named `test`. The host bootstrap must guard
+that database before rebuilding its schema. Package tests use a generic owner
+table and isolated temporary storage; S3 operations use the AWS SDK mock handler
+and make no network requests. Host-specific permissions and routes belong in the
+host application's suite.
+
+## CakePHP compatibility notes
 
 - event callbacks use `EventInterface`
 - plugin routes use the CakePHP 4 route callback style
@@ -52,7 +72,7 @@ be fetched back to local disk when needed.
 
 ## Deferred Work
 
-- file/image/download authorization is still controller-driven and should be reviewed
-  separately if private files are involved
+- hosts must configure permissions for attachment owners; see the
+  [authorization and storage upgrade guide](docs/authorization.md)
 - template line-length warnings remain even though the package can be made `phpcs`
   error-clean

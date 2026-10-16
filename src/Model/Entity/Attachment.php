@@ -44,8 +44,9 @@ class Attachment extends Entity
      * @var array
      */
     protected array $_accessible = [
-        '*' => true,
-        'id' => false,
+        'filename' => true,
+        'details' => true,
+        'tags' => true,
     ];
 
     protected array $_virtual = ['details_array', 'readable_size', 'readable_created'];
@@ -58,7 +59,7 @@ class Attachment extends Entity
     protected function _getPath()
     {
         $md5 = $this->md5 ?? null;
-        if (!$md5) {
+        if (!is_string($md5) || !preg_match('/^[a-f0-9]{32}$/D', $md5)) {
             return false;
         }
 
@@ -86,14 +87,25 @@ class Attachment extends Entity
             ];
             $s3client = new \Aws\S3\S3Client($config);
 
+            $temporary = tempnam($targetDir, 'attachment-');
+            if ($temporary === false) {
+                return false;
+            }
             try {
                 $s3client->getObject([
                     'Bucket' => Configure::read('Attachment.s3-bucket'),
                     'Key' => $this->s3_path,
-                    'SaveAs' => $filePath,
+                    'SaveAs' => $temporary,
                 ]);
+                if (md5_file($temporary) !== $md5 || !rename($temporary, $filePath)) {
+                    return false;
+                }
             } catch (\Exception $e) {
                 return false;
+            } finally {
+                if (is_file($temporary)) {
+                    unlink($temporary);
+                }
             }
         }
 
@@ -117,7 +129,7 @@ class Attachment extends Entity
      */
     protected function _getReadableCreated()
     {
-        return $this->created->format('d/m/Y H:i:s');
+        return $this->created?->format('d/m/Y H:i:s') ?? '';
     }
 
     /**
@@ -157,7 +169,7 @@ class Attachment extends Entity
     protected function _getS3Path()
     {
         $md5 = $this->md5 ?? null;
-        if (!$md5) {
+        if (!is_string($md5) || !preg_match('/^[a-f0-9]{32}$/D', $md5)) {
             return null;
         }
 

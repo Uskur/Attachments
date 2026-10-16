@@ -123,9 +123,9 @@ function getFolder(id = null){
         printFiles();
     }
     else{
-        $.get('<?= $this->Url->build(['action' => 'list'])?>/'+id+'.json?filter=<?= $this->request->getQuery('filter')?>',function(data){
+        $.get('<?= $this->Url->build(['action' => 'list'])?>/'+id+'.json?filter=<?= rawurlencode(is_string($this->request->getQuery('filter')) ? $this->request->getQuery('filter') : '') ?>',function(data){
             printFiles(data);
-        },'json');
+        },'json').fail(function () { alert(<?= json_encode(__d('Uskur/Attachments', 'The files could not be loaded.')) ?>); });
     }
 }
 
@@ -156,6 +156,10 @@ function printFiles(data){
     }
 }
 
+function escapeAttachmentText(value) {
+    return $('<div>').text(value == null ? '' : value).html().replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 function printFile(file){
     if(file.filetype.startsWith('image')) {
         template = $.trim($('#imageTemplate').html());
@@ -163,8 +167,8 @@ function printFile(file){
     else{
         template = $.trim($('#fileTemplate').html());
     }
-    newItemHtml = template.replace(/fileName/g, file.filename)
-    .replace(/fileTitle/g, file.details_array != null && file.details_array.hasOwnProperty('title')?file.details_array.title:'')
+    newItemHtml = template.replace(/fileName/g, function () { return escapeAttachmentText(file.filename); })
+    .replace(/fileTitle/g, function () { return escapeAttachmentText(file.details_array ? file.details_array.title : ''); })
     .replace(/fileId/g, file.id)
     .replace(/created/g, file.readable_created)
     .replace(/size/g, file.readable_size);
@@ -175,7 +179,7 @@ function deleteFile(id){
     if(confirm("<?= __d('Uskur/WebpageManager', 'Are you sure you want to delete this file?');?>")){
       $.post('<?php echo $this->Url->build(['plugin' => 'Uskur/Attachments','controller' => 'Attachments','action' => 'delete']); ?>/'+id+'.json', {}, function( data ) {
               $('#'+id).remove();
-      },'json');
+      },'json').fail(function () { alert(<?= json_encode(__d('Uskur/Attachments', 'The file could not be deleted.')) ?>); });
     }
 }
 
@@ -198,7 +202,7 @@ $(function () {
         }
     });
 
-    getFolder("<?= str_replace('/', '-', $model) . "/$fk"?>");
+    getFolder(<?= json_encode(str_replace('/', '-', $model) . "/$fk", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
 
     $( "#importFilesForm" ).submit(function( event ) {
           event.preventDefault();
@@ -310,11 +314,13 @@ $(function () {
               position = ui.item.index()+1;
               url = '<?= $this->Url->build(['plugin' => 'Uskur/Attachments','controller' => 'Attachments','action' => 'updatePosition']); ?>';
                 $.ajax({
-                    type: 'GET',
+                    type: 'POST',
+                    dataType: 'json',
                     url: url+'/'+ui.item.attr('id')+'/'+position
-                }).done(function() {
+                }).always(function() {
                     ui.item.find('i.fa-spinner').removeClass('fa-spinner fa-spin').addClass('fa-bars');
                 }).fail(function() {
+                    $("tbody.sortable").sortable("cancel");
                     alert( "Error while trying to save the new position. Please refresh page." );
                 });
         }

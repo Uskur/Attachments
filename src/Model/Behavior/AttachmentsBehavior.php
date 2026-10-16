@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Uskur\Attachments\Model\Behavior;
 
+use Cake\Core\Configure;
 use Cake\Datasource\EntityInterface;
 use Cake\Event\EventInterface;
 use Cake\ORM\Behavior;
@@ -17,6 +18,7 @@ class AttachmentsBehavior extends Behavior
     protected array $_defaultConfig = [
         'formFieldName' => 'attachment_uploads',
         'modelName' => null,
+        'allowedTypes' => [],
         'tags' => [],
         // function (Attachment $attachment, EntityInterface $relatedEntity) : bool
         'downloadAuthorizeCallback' => null,
@@ -36,6 +38,9 @@ class AttachmentsBehavior extends Behavior
     public function initialize(array $config): void
     {
         $this->Attachments = TableRegistry::getTableLocator()->get('Uskur/Attachments.Attachments');
+        $models = Configure::read('Attachment.models', []);
+        $models[$this->getConfig('modelName') ?: $this->_table->getRegistryAlias()] = $this->_table->getRegistryAlias();
+        Configure::write('Attachment.models', $models);
 
         if (!$this->_table->associations()->has('Attachments')) {
             $this->_table->hasMany('Attachments', [
@@ -76,23 +81,17 @@ class AttachmentsBehavior extends Behavior
             return;
         }
 
-        if ($uploads instanceof UploadedFileInterface) {
-            if ($uploads->getError() === UPLOAD_ERR_OK && $uploads->getClientFilename()) {
-                $this->Attachments->addUpload($entity, $uploads);
+        $items = $uploads instanceof UploadedFileInterface ? [$uploads] : (is_array($uploads) ? $uploads : []);
+        foreach ($items as $upload) {
+            if (!$upload instanceof UploadedFileInterface || $upload->getError() === UPLOAD_ERR_NO_FILE) {
+                continue;
             }
-
-            return;
-        }
-
-        if (is_array($uploads)) {
-            foreach ($uploads as $upload) {
-                if (
-                    $upload instanceof UploadedFileInterface
-                    && $upload->getError() === UPLOAD_ERR_OK
-                    && $upload->getClientFilename()
-                ) {
-                    $this->Attachments->addUpload($entity, $upload);
-                }
+            if ($upload->getError() !== UPLOAD_ERR_OK) {
+                throw new \RuntimeException('The attachment upload failed.');
+            }
+            $saved = $this->Attachments->addUpload($entity, $upload, $this->getConfig('allowedTypes'));
+            if (!$saved) {
+                throw new \RuntimeException('The attachment could not be saved.');
             }
         }
     }
@@ -143,19 +142,23 @@ class AttachmentsBehavior extends Behavior
      */
     public function saveTags($attachment, $tags)
     {
-        $newTags = [];
-        foreach ($tags as $tag) {
-            if (isset($this->getConfig('tags')[$tag])) {
-                $newTags[] = $tag;
-                if ($this->getConfig('tags')[$tag]['exclusive'] === true) {
-                    $this->_clearTag($attachment, $tag);
+        return $this->Attachments->getConnection()->transactional(function () use ($attachment, $tags) {
+            $newTags = [];
+            foreach ($tags as $tag) {
+                if (isset($this->getConfig('tags')[$tag])) {
+                    $newTags[] = $tag;
+                    if ($this->getConfig('tags')[$tag]['exclusive'] === true) {
+                        if (!$this->_clearTag($attachment, $tag)) {
+                            return false;
+                        }
+                    }
                 }
             }
-        }
 
-        $this->Attachments->patchEntity($attachment, ['tags' => $newTags]);
+            $this->Attachments->patchEntity($attachment, ['tags' => $newTags]);
 
-        return (bool)$this->Attachments->save($attachment);
+            return (bool)$this->Attachments->save($attachment);
+        });
     }
 
     /**

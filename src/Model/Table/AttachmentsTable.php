@@ -7,10 +7,14 @@ use ArrayObject;
 use Cake\Core\Configure;
 use Cake\Datasource\EntityInterface;
 use Cake\Event\EventInterface;
+use Cake\Log\Log;
 use Cake\ORM\RulesChecker;
 use Cake\ORM\Table;
+use Cake\ORM\TableRegistry;
 use Cake\Validation\Validator;
 use Psr\Http\Message\UploadedFileInterface;
+use RuntimeException;
+use Throwable;
 use Uskur\Attachments\Model\Entity\Attachment;
 
 /**
@@ -45,14 +49,14 @@ class AttachmentsTable extends Table
         $this->belongsTo('ParentAttachment', [
             'className' => 'Uskur/Attachments.Attachments',
             'foreignKey' => 'foreign_key',
-            'conditions' => ['SubAttachments.model' => 'Attachments'],
+            'conditions' => [$this->aliasField('model') . ' IN' => ['Attachments', 'Uskur/Attachments.Attachments']],
             'joinType' => 'LEFT',
         ]);
         $this->hasMany('SubAttachments', [
             'className' => 'Uskur/Attachments.Attachments',
             'foreignKey' => 'foreign_key',
-            'conditions' => ['SubAttachments.model' => 'Attachments'],
-            'dependent' => true,
+            'conditions' => ['SubAttachments.model IN' => ['Attachments', 'Uskur/Attachments.Attachments']],
+            'dependent' => true, 'cascadeCallbacks' => true,
         ]);
 
         if (Configure::read('Attachment.s3-endpoint')) {
@@ -100,7 +104,41 @@ class AttachmentsTable extends Table
      */
     public function buildRules(RulesChecker $rules): RulesChecker
     {
+        $rules->add(function ($attachment) {
+            try {
+                return is_string($attachment->foreign_key) && $attachment->foreign_key !== ''
+                    && $this->getOwnerTable($attachment->model)->exists(['id' => $attachment->foreign_key]);
+            } catch (\InvalidArgumentException $exception) {
+                return false;
+            }
+        }, 'registeredOwner', ['errorField' => 'foreign_key']);
+        $rules->addUpdate(static fn($attachment) => !$attachment->isDirty('model') && !$attachment->isDirty('foreign_key'),
+            'immutableOwner', ['errorField' => 'foreign_key']);
+        $rules->add(static fn($attachment) => (!$attachment->isNew() && !$attachment->isDirty('md5'))
+            || (is_string($attachment->md5) && preg_match('/^[a-f0-9]{32}$/D', $attachment->md5)),
+            'validHash', ['errorField' => 'md5']);
+        $rules->addUpdate(static fn($attachment) => !$attachment->isDirty('md5') && !$attachment->isDirty('size')
+            && !$attachment->isDirty('filetype'), 'managedFile', ['errorField' => 'md5']);
+        $rules->addUpdate(function ($attachment) {
+            return !$attachment->isDirty('sequence') || (ctype_digit((string)$attachment->sequence)
+                && (int)$attachment->sequence >= 1 && (int)$attachment->sequence <= $this->find()->where([
+                    'model' => $attachment->model, 'foreign_key' => $attachment->foreign_key,
+                ])->count());
+        }, 'validSequence', ['errorField' => 'sequence']);
+
         return $rules;
+    }
+
+    /** Resolve an owner through the host's registered model aliases. */
+    public function getOwnerTable(mixed $model): Table
+    {
+        $models = Configure::read('Attachment.models', []);
+        $alias = is_string($model) ? ($models[str_replace('-', '/', $model)] ?? null) : null;
+        if (!$alias) {
+            throw new \InvalidArgumentException('Unregistered attachment owner model.');
+        }
+
+        return TableRegistry::getTableLocator()->get($alias);
     }
 
     /**
@@ -125,49 +163,64 @@ class AttachmentsTable extends Table
             return false;
         }
 
-        if (!empty($allowed_types) && !in_array($payload['type'], $allowed_types, true)) {
-            throw new \Exception('File type not allowed.');
-        }
-
-        $attachment = $this->newEntity([
-            'model' => $entity->getSource(),
-            'foreign_key' => $entity->id,
-            'filename' => $payload['filename'],
-            'size' => $payload['size'],
-            'filetype' => $payload['type'],
-            'md5' => $payload['md5'],
-            'upload' => $payload['upload'] ?? null,
-            'tmpPath' => $payload['tmpPath'] ?? null,
-        ]);
-
-        if (!empty($details)) {
-            $attachment->details = json_encode($details);
-        }
-
-        $existingConditions = [
-            'filename' => $attachment->filename,
-            'model' => $attachment->model,
-            'foreign_key' => $attachment->foreign_key,
-            'md5' => $attachment->md5,
-        ];
-        if ($attachment->details !== null && $attachment->details !== '') {
-            $existingConditions['details'] = $attachment->details;
-        } else {
-            $existingConditions['details IS'] = null;
-        }
-
-        $existing = $this->find()->where($existingConditions)->first();
-        if ($existing) {
-            if (!empty($details)) {
-                $existing->details = json_encode($details);
-
-                return $this->save($existing);
+        try {
+            if (!empty($allowed_types) && !in_array($payload['type'], $allowed_types, true)) {
+                throw new \Exception('File type not allowed.');
             }
 
-            return $existing;
-        }
+            $attachment = $this->newEntity([
+                'model' => $entity->getSource(),
+                'foreign_key' => $entity->id,
+                'filename' => $payload['filename'],
+                'size' => $payload['size'],
+                'filetype' => $payload['type'],
+                'md5' => $payload['md5'],
+                'upload' => $payload['upload'] ?? null,
+                'tmpPath' => $payload['tmpPath'] ?? null,
+            ], ['accessibleFields' => array_fill_keys(['model', 'foreign_key', 'size', 'filetype', 'md5', 'upload', 'tmpPath'], true)]);
 
-        return $this->save($attachment);
+            if (!empty($details)) {
+                $attachment->details = json_encode($details);
+            }
+
+            $existingConditions = [
+                'filename' => $attachment->filename,
+                'model' => $attachment->model,
+                'foreign_key' => $attachment->foreign_key,
+                'md5' => $attachment->md5,
+            ];
+            if ($attachment->details !== null && $attachment->details !== '') {
+                $existingConditions['details'] = $attachment->details;
+            } else {
+                $existingConditions['details IS'] = null;
+            }
+
+            $existing = $this->find()->where($existingConditions)->first();
+            if ($existing) {
+                if (!empty($details)) {
+                    $existing->details = json_encode($details);
+
+                    return $this->save($existing);
+                }
+
+                return $existing;
+            }
+
+            try {
+                $saved = $this->save($attachment);
+            } catch (Throwable $exception) {
+                $this->removeUnreferencedFile($attachment->md5);
+                throw $exception;
+            }
+            if (!$saved) {
+                $this->removeUnreferencedFile($attachment->md5);
+            }
+            return $saved;
+        } finally {
+            if (is_file($payload['tmpPath'])) {
+                unlink($payload['tmpPath']);
+            }
+        }
     }
 
     /**
@@ -195,7 +248,7 @@ class AttachmentsTable extends Table
             'filetype' => $fileMime,
             'md5' => $fileMd5,
             'tmpPath' => $filePath,
-        ]);
+        ], ['accessibleFields' => array_fill_keys(['model', 'foreign_key', 'size', 'filetype', 'md5', 'upload', 'tmpPath'], true)]);
 
         if ($details) {
             $attachment->details = json_encode($details);
@@ -218,7 +271,16 @@ class AttachmentsTable extends Table
             return $existing;
         }
 
-        return $this->save($attachment) ? $attachment : false;
+        try {
+            $saved = $this->save($attachment);
+        } catch (Throwable $exception) {
+            $this->removeUnreferencedFile($attachment->md5);
+            throw $exception;
+        }
+        if (!$saved) {
+            $this->removeUnreferencedFile($attachment->md5);
+        }
+        return $saved ? $attachment : false;
     }
 
     /**
@@ -231,29 +293,29 @@ class AttachmentsTable extends Table
      */
     public function afterSave(EventInterface $event, Attachment $attachment, ArrayObject $options)
     {
-        if ($attachment->upload instanceof UploadedFileInterface) {
-            $path = $attachment->get('path');
-            $attachment->upload->moveTo($path);
-            if ($this->s3bucket !== false) {
-                $this->putToS3($attachment, $path);
-            }
-            $attachment->upload = null;
-
+        if (!$attachment->tmpPath) {
             return;
         }
-
-        if ($attachment->tmpPath) {
-            $path = $attachment->get('path');
-            if (!copy($attachment->tmpPath, $path)) {
-                throw new \Exception("File {$attachment->tmpPath} could not be copied to {$attachment->path}");
+        $path = $this->localPath($attachment->md5);
+        if (!is_file($path)) {
+            if (!is_dir(dirname($path)) && !mkdir(dirname($path), 0775, true) && !is_dir(dirname($path))) {
+                throw new RuntimeException('Attachment storage directory could not be created.');
             }
-
-            if ($this->s3bucket !== false) {
-                $this->putToS3($attachment, $path);
+            $temporary = tempnam(dirname($path), 'attachment-');
+            try {
+                if ($temporary === false || !copy($attachment->tmpPath, $temporary) || !rename($temporary, $path)) {
+                    throw new RuntimeException('Attachment bytes could not be stored.');
+                }
+            } finally {
+                if ($temporary !== false && is_file($temporary)) {
+                    unlink($temporary);
+                }
             }
-
-            $attachment->tmpPath = null;
         }
+        if ($this->s3bucket !== false && !$this->s3client->doesObjectExistV2($this->s3bucket, $attachment->s3_path)) {
+            $this->putToS3($attachment, $path);
+        }
+        $attachment->tmpPath = null;
     }
 
     /**
@@ -266,21 +328,12 @@ class AttachmentsTable extends Table
      */
     public function afterDelete(EventInterface $event, Attachment $attachment, ArrayObject $options)
     {
-        $path = $attachment->get('path');
-        if (file_exists($path)) {
-            $otherExisting = $this->find()->where(['Attachments.md5' => $attachment->md5])->count();
-            if ($otherExisting == 0) {
-                if ($this->s3bucket !== false) {
-                    $this->s3client->deleteObject([
-                        'Bucket' => $this->s3bucket,
-                        'Key' => $attachment->s3_path,
-                    ]);
-                }
-                if (file_exists($path)) {
-                    unlink($path);
-                }
-            }
+        if (!is_string($attachment->md5) || !preg_match('/^[a-f0-9]{32}$/D', $attachment->md5)) {
+            return;
         }
+        $this->getConnection()->afterCommit(function () use ($attachment): void {
+            $this->removeUnreferencedFile($attachment->md5);
+        });
     }
 
     /**
@@ -310,25 +363,35 @@ class AttachmentsTable extends Table
     public function replaceFile(string $id, string $tmpPath)
     {
         $currentAttachment = $this->get($id);
-        $this->delete($currentAttachment);
-
-        $fileSize = filesize($tmpPath);
-        $fileMime = mime_content_type($tmpPath);
-        $fileMd5 = md5_file($tmpPath);
-        if ($fileSize === false || $fileMime === false || $fileMd5 === false) {
-            throw new \Exception("File {$tmpPath} could not be read.");
+        $size = filesize($tmpPath);
+        $type = mime_content_type($tmpPath);
+        $hash = md5_file($tmpPath);
+        if ($size === false || $type === false || $hash === false) {
+            throw new RuntimeException('The replacement file could not be inspected.');
         }
         $attachment = $this->newEntity([
             'model' => $currentAttachment->model,
             'foreign_key' => $currentAttachment->foreign_key,
             'filename' => $currentAttachment->filename,
-            'size' => $fileSize,
-            'filetype' => $fileMime,
-            'md5' => $fileMd5,
-            'tmpPath' => $tmpPath,
-        ]);
+            'size' => $size, 'filetype' => $type, 'md5' => $hash, 'tmpPath' => $tmpPath,
+        ], ['accessibleFields' => array_fill_keys(['model', 'foreign_key', 'size', 'filetype', 'md5', 'tmpPath'], true)]);
+        try {
+            $saved = $this->getConnection()->transactional(function () use ($currentAttachment, $attachment) {
+                if (!$this->delete($currentAttachment)) {
+                    return false;
+                }
 
-        return $this->save($attachment) ? $attachment : false;
+                return $this->save($attachment);
+            });
+        } catch (Throwable $exception) {
+            $this->removeUnreferencedFile($hash);
+            throw $exception;
+        }
+        if (!$saved) {
+            $this->removeUnreferencedFile($hash);
+        }
+
+        return $saved ?: false;
     }
 
     /**
@@ -371,7 +434,7 @@ class AttachmentsTable extends Table
         unset($newAttachmentData['id'], $newAttachmentData['created'], $newAttachmentData['sequence']);
         $newAttachmentData['model'] = $entity->getSource();
         $newAttachmentData['foreign_key'] = $entity->id;
-        $newAttachment = $this->newEntity($newAttachmentData);
+        $newAttachment = $this->newEntity($newAttachmentData, ['accessibleFields' => array_fill_keys(['model', 'foreign_key', 'size', 'filetype', 'md5', 'upload', 'tmpPath'], true)]);
 
         return $this->save($newAttachment) ? $newAttachment : false;
     }
@@ -391,24 +454,134 @@ class AttachmentsTable extends Table
             throw new \Exception('Upload errors.');
         }
 
-        $stream = $upload->getStream();
-        if ($stream->tell() > 0) {
-            $stream->rewind();
+        $path = tempnam(TMP, 'attachment-upload-');
+        if ($path === false) {
+            throw new RuntimeException('An upload staging file could not be created.');
         }
-        $ctx = hash_init('md5');
-        while (!$stream->eof()) {
-            hash_update($ctx, $stream->read(1048576));
-        }
-        $md5 = hash_final($ctx);
-        $stream->seek(0);
+        try {
+            $upload->moveTo($path);
+            $size = filesize($path);
+            $type = mime_content_type($path);
+            $md5 = md5_file($path);
+            if ($size === false || $type === false || $md5 === false) {
+                throw new RuntimeException('The uploaded file could not be inspected.');
+            }
 
-        return [
-            'filename' => $upload->getClientFilename(),
-            'size' => $upload->getSize(),
-            'type' => $upload->getClientMediaType(),
-            'md5' => $md5,
-            'upload' => $upload,
-        ];
+            return ['filename' => basename((string)$upload->getClientFilename()), 'size' => $size,
+                'type' => $type, 'md5' => $md5, 'tmpPath' => $path];
+        } catch (Throwable $exception) {
+            unlink($path);
+            throw $exception;
+        }
+    }
+
+    /** Local storage path without downloading remote bytes as a side effect. */
+    public function localPath(string $hash): string
+    {
+        if (!preg_match('/^[a-f0-9]{32}$/D', $hash)) {
+            throw new \InvalidArgumentException('Invalid attachment hash.');
+        }
+
+        return Configure::read('Attachment.path') . DS . substr($hash, 0, 2) . DS . $hash;
+    }
+
+    /** Retryable cleanup; database references always take precedence over deletion. */
+    public function removeUnreferencedFile(string $hash): bool
+    {
+        try {
+            return $this->getConnection()->transactional(function () use ($hash): bool {
+                $path = $this->localPath($hash);
+                $references = $this->find()->select(['id'])->where(['md5' => $hash])->epilog('FOR UPDATE')->all();
+                if (!$references->isEmpty()) {
+                    return true;
+                }
+                if ($this->s3bucket !== false) {
+                    $this->s3client->deleteObject(['Bucket' => $this->s3bucket, 'Key' => substr($hash, 0, 2) . '/' . $hash]);
+                }
+                if (is_file($path) && !unlink($path)) {
+                    throw new RuntimeException('Unreferenced attachment bytes could not be removed.');
+                }
+                return true;
+            });
+        } catch (Throwable $exception) {
+            Log::write('error', 'Attachment storage cleanup failed; the file can be retried.', ['md5' => $hash, 'exception' => $exception]);
+            return false;
+        }
+    }
+
+    /** Find old orphaned hashes; deletion is an explicit maintenance operation. */
+    public function cleanupStorage(bool $delete = false, int $minimumAge = 3600): array
+    {
+        if ($minimumAge < 300) {
+            throw new \InvalidArgumentException('Storage cleanup requires at least a five-minute grace period.');
+        }
+        $cutoff = time() - $minimumAge;
+        $candidates = [];
+        $root = Configure::read('Attachment.path');
+        if (is_dir($root)) {
+            foreach (new \DirectoryIterator($root) as $directory) {
+                if (!$directory->isDir() || !preg_match('/^[a-f0-9]{2}$/D', $directory->getFilename())) {
+                    continue;
+                }
+                foreach (new \DirectoryIterator($directory->getPathname()) as $file) {
+                    $hash = $file->getFilename();
+                    if ($file->isFile() && preg_match('/^[a-f0-9]{32}$/D', $hash)
+                        && substr($hash, 0, 2) === $directory->getFilename() && $file->getMTime() < $cutoff) {
+                        $candidates[$hash] = true;
+                    }
+                }
+            }
+        }
+        if ($this->s3bucket !== false) {
+            $token = null;
+            do {
+                $arguments = ['Bucket' => $this->s3bucket];
+                if ($token !== null) {
+                    $arguments['ContinuationToken'] = $token;
+                }
+                $result = $this->s3client->listObjectsV2($arguments);
+                foreach ($result['Contents'] ?? [] as $object) {
+                    $key = $object['Key'];
+                    if (preg_match('#^([a-f0-9]{2})/([a-f0-9]{32})$#D', $key, $match)
+                        && $match[1] === substr($match[2], 0, 2) && $object['LastModified']->getTimestamp() < $cutoff) {
+                        $candidates[$match[2]] = true;
+                    }
+                }
+                $token = $result['NextContinuationToken'] ?? null;
+            } while ($token !== null);
+        }
+        $statistics = ['candidates' => 0, 'attempted' => 0, 'failed' => 0];
+        foreach (array_keys($candidates) as $hash) {
+            if ($this->exists(['md5' => $hash])) {
+                continue;
+            }
+            $statistics['candidates']++;
+            if ($delete) {
+                $statistics['attempted']++;
+                if (!$this->removeUnreferencedFile($hash)) {
+                    $statistics['failed']++;
+                }
+            }
+        }
+        // Only this package's known staging prefixes are eligible for age-based cleanup.
+        $temporaryFiles = array_merge(glob(TMP . 'attachment-upload-*') ?: [], glob(TMP . 'attachment-replace-*') ?: [], glob(TMP . 'attachment-preview-*') ?: []);
+        if (is_dir($root)) {
+            $temporaryFiles = array_merge($temporaryFiles, glob($root . DS . '[a-f0-9][a-f0-9]' . DS . 'attachment-*') ?: []);
+        }
+        foreach ($temporaryFiles as $file) {
+            if (!is_file($file) || filemtime($file) >= $cutoff) {
+                continue;
+            }
+            $statistics['candidates']++;
+            if ($delete) {
+                $statistics['attempted']++;
+                if (!unlink($file)) {
+                    $statistics['failed']++;
+                }
+            }
+        }
+
+        return $statistics;
     }
 
     /**
