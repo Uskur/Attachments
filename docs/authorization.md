@@ -62,3 +62,13 @@ The minimum grace period is 300 seconds; use a period longer than the longest up
 ## Upgrade verification
 
 Test real HTTP permissions and CSRF for every owner, foreign records, unknown models, nested owners/cycles, protected metadata, actual upload MIME/size/hash, model-scoped ordering, replacement identity, shared hashes, outer and nested rollback, post-commit failure and retry, multi-file failure, and orphan inspection/removal. Inject storage errors against isolated directories and the AWS SDK mock handler; never point failure tests at production storage. Run a separate integration check against the host's actual storage backend and manually verify upload, sorting, deletion, and image-editor UI before deployment.
+
+## Browser integration checks
+
+Enable the host's native CSRF middleware for browser mutations and send its token with forms and Ajax/file-upload requests. Deploy client and method changes together; avoid broad plugin exemptions. Test missing-token rejection through the actual HTTP middleware as well as owned/foreign resource permissions.
+
+Failed uploads must report an error and reset progress. Failed metadata saves must retain the input for retry. Keep existing editor/tree behavior, icons, and menus when adapting a host. Verify denied and network-failed requests in a browser as well as successful writes against the configured storage backend. These checks do not require a change to the existing attachment cache or file/download policy.
+
+Trusted folder transfers may save a folder attachment with `allowFolderTransfer => true` after the host authorizes both its stored source owner and destination owner. This option only permits a folder's `foreign_key` transition with an unchanged model; registered-owner, file-integrity, and other save rules still run. Set `sequence` to null to append in the destination through SequenceBehavior. Never pass request data as ORM save options or enable this for ordinary metadata edits. `copyAttachment($id, $owner, $sequence)` accepts an optional insertion position; omitting it retains append behavior.
+
+New attachment positions are checked by a native create rule: a supplied position must be between 1 and the destination owner’s attachment count plus 1. A null position retains automatic appending. This also protects direct `copyAttachment()` callers; failed copies leave existing rows and ordering unchanged.

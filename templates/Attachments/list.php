@@ -267,7 +267,9 @@ $(function () {
           event.preventDefault();
           $.post( $( "#fileAttributeForm" ).attr('action')+'/'+$('#attribute-id').val()+'.json', $( "#fileAttributeForm" ).serialize(), function( data ) {
               $('#fileAttributes').modal('hide');
-          },'json')
+          },'json').fail(function () {
+              alert(<?= json_encode(__d('Uskur/Attachments', 'The file details could not be saved. Please try again.')) ?>);
+          });
         });
 
     $('#fileupload').fileupload({
@@ -278,13 +280,17 @@ $(function () {
             data.submit();
         },
         done: function (e, data) {
-            getFolder(activeFolder.id);
+            getFolder(<?= json_encode(str_replace('/', '-', $model) . "/$fk", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
             $.each(data.result.files, function (index, file) {
                 $('<p/>').text(file.name).appendTo('#files');
             });
         },
         stop: function (e) {
-            getFolder(activeFolder.id);
+            getFolder(<?= json_encode(str_replace('/', '-', $model) . "/$fk", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
+        },
+        fail: function () {
+            $('#progress .progress-bar').css('width', '0%');
+            alert(<?= json_encode(__d('Uskur/Attachments', 'The file could not be uploaded. Please try again.')) ?>);
         },
         progressall: function (e, data) {
             var progress = parseInt(data.loaded / data.total * 100, 10);

@@ -331,12 +331,37 @@ class AttachmentsTableTest extends TestCase
         $copy = $table->copyAttachment(self::FILE, $owner);
         $this->assertNotFalse($copy);
         $this->assertNotSame(self::FILE, $copy->id);
+        $this->assertSame(2, $table->get($copy->id)->sequence);
         $this->assertSame(self::FOREIGN_OWNER, $copy->foreign_key);
         $this->assertSame(md5('Owned bytes'), $copy->md5);
         $this->assertTrue($table->delete($table->get(self::FILE)));
         ConnectionManager::get('test')->commit();
         $this->assertFileExists($copy->path);
         $this->assertSame('Owned bytes', file_get_contents($copy->path));
+    }
+
+    public function testCopiedAttachmentCanBeInsertedAtTheRequestedPosition(): void
+    {
+        $table = $this->storageTable();
+        $owner = TableRegistry::getTableLocator()->get('Owners')->get(self::FOREIGN_OWNER);
+        $copy = $table->copyAttachment(self::FILE, $owner, 1);
+        $this->assertNotFalse($copy);
+        $this->assertSame(1, $table->get($copy->id)->sequence);
+        $this->assertSame(2, $table->get(self::FOREIGN_FILE)->sequence);
+        $this->assertSame(1, $table->get(self::FILE)->sequence);
+        $this->assertSame(self::FOREIGN_OWNER, $copy->foreign_key);
+    }
+
+    public function testCopiedAttachmentRejectsPositionsOutsideTheDestination(): void
+    {
+        $table = $this->storageTable();
+        $owner = TableRegistry::getTableLocator()->get('Owners')->get(self::FOREIGN_OWNER);
+        foreach ([-1, 0, 999] as $sequence) {
+            $this->assertFalse($table->copyAttachment(self::FILE, $owner, $sequence));
+            $this->assertSame(2, $table->find()->count());
+            $this->assertSame(1, $table->get(self::FILE)->sequence);
+            $this->assertSame(1, $table->get(self::FOREIGN_FILE)->sequence);
+        }
     }
 
     public function testUnregisteredAndMissingOwnersCannotBeSaved(): void

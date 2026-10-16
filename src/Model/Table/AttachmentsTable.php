@@ -112,15 +112,25 @@ class AttachmentsTable extends Table
                 return false;
             }
         }, 'registeredOwner', ['errorField' => 'foreign_key']);
-        $rules->addUpdate(static fn($attachment) => !$attachment->isDirty('model') && !$attachment->isDirty('foreign_key'),
+        $rules->addUpdate(static fn($attachment, $options) => !$attachment->isDirty('model')
+            && (!$attachment->isDirty('foreign_key') || (!empty($options['allowFolderTransfer'])
+                && in_array($attachment->model, ['FileFolders', 'Uskur/WebpageManager.FileFolders'], true))),
             'immutableOwner', ['errorField' => 'foreign_key']);
         $rules->add(static fn($attachment) => (!$attachment->isNew() && !$attachment->isDirty('md5'))
             || (is_string($attachment->md5) && preg_match('/^[a-f0-9]{32}$/D', $attachment->md5)),
             'validHash', ['errorField' => 'md5']);
         $rules->addUpdate(static fn($attachment) => !$attachment->isDirty('md5') && !$attachment->isDirty('size')
             && !$attachment->isDirty('filetype'), 'managedFile', ['errorField' => 'md5']);
-        $rules->addUpdate(function ($attachment) {
-            return !$attachment->isDirty('sequence') || (ctype_digit((string)$attachment->sequence)
+        $rules->addCreate(function ($attachment): bool {
+            return $attachment->sequence === null || (ctype_digit((string)$attachment->sequence)
+                && (int)$attachment->sequence >= 1 && (int)$attachment->sequence <= $this->find()->where([
+                    'model' => $attachment->model, 'foreign_key' => $attachment->foreign_key,
+                ])->count() + 1);
+        }, 'validSequence', ['errorField' => 'sequence']);
+        $rules->addUpdate(function ($attachment, $options) {
+            return (!empty($options['allowFolderTransfer']) && $attachment->isDirty('foreign_key')
+                && $attachment->sequence === null) || !$attachment->isDirty('sequence')
+                || (ctype_digit((string)$attachment->sequence)
                 && (int)$attachment->sequence >= 1 && (int)$attachment->sequence <= $this->find()->where([
                     'model' => $attachment->model, 'foreign_key' => $attachment->foreign_key,
                 ])->count());
@@ -358,7 +368,7 @@ class AttachmentsTable extends Table
      *
      * @param string $id Attachment ID.
      * @param string $tmpPath Path to the new file.
-     * @return bool|\Uskur\Attachments\Model\Entity\Attachment
+     * @return \Uskur\Attachments\Model\Entity\Attachment|bool
      */
     public function replaceFile(string $id, string $tmpPath)
     {
@@ -425,18 +435,27 @@ class AttachmentsTable extends Table
      *
      * @param string $id Attachment ID.
      * @param \Cake\Datasource\EntityInterface $entity The target entity.
+     * @param int|null $sequence Position for the copied attachment.
      * @return bool|\Uskur\Attachments\Model\Entity\Attachment
      */
-    public function copyAttachment($id, $entity)
+    public function copyAttachment($id, $entity, ?int $sequence = null)
     {
         $currentAttachment = $this->get($id);
         $newAttachmentData = $currentAttachment->toArray();
         unset($newAttachmentData['id'], $newAttachmentData['created'], $newAttachmentData['sequence']);
         $newAttachmentData['model'] = $entity->getSource();
         $newAttachmentData['foreign_key'] = $entity->id;
-        $newAttachment = $this->newEntity($newAttachmentData, ['accessibleFields' => array_fill_keys(['model', 'foreign_key', 'size', 'filetype', 'md5', 'upload', 'tmpPath'], true)]);
+        $newAttachmentData['sequence'] = $sequence;
+        $newAttachment = $this->newEntity($newAttachmentData, ['accessibleFields' => array_fill_keys(['model', 'foreign_key', 'size', 'filetype', 'md5', 'upload', 'tmpPath', 'sequence'], true)]);
 
-        return $this->save($newAttachment) ? $newAttachment : false;
+        $saved = $this->save($newAttachment);
+        Log::write($saved ? 'info' : 'error', $saved ? 'Attachment copied.' : 'Attachment could not be copied.', [
+            'source_id' => $id, 'id' => $newAttachment->id,
+            'model' => $newAttachment->model, 'foreign_key' => $newAttachment->foreign_key,
+            'errors' => $newAttachment->getErrors(),
+        ]);
+
+        return $saved ? $newAttachment : false;
     }
 
     /**
